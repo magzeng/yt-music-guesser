@@ -129,7 +129,7 @@ export function extractVideoId(urlOrId) {
  */
 export async function fetchVideoInfo(videoId, start = 0) {
   try {
-    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json&hl=zh-TW`;
     const res = await fetch(oembedUrl);
     if (!res.ok) throw new Error('無法取得影片資訊');
     const data = await res.json();
@@ -162,7 +162,7 @@ const INVIDIOUS_INSTANCES = [
 
 /**
  * Fetch tracks from a YouTube / YouTube Music playlist.
- * 100% Serverless & Pure JS: Works on GitHub Pages without Python!
+ * Defaults to Traditional Chinese (zh-TW) when available.
  */
 export async function fetchPlaylistSongs(playlistId) {
   // 1. Check if it's one of the built-in preset playlists first (instant load)
@@ -178,9 +178,9 @@ export async function fetchPlaylistSongs(playlistId) {
     }
   }
 
-  // 2. Try local backend API if available (e.g., local serve.py)
+  // 2. Try local backend API with native YouTube Music Chinese resolver (serve.py)
   try {
-    const res = await fetch(`/api/playlist?list=${encodeURIComponent(playlistId)}`);
+    const res = await fetch(`/api/playlist?list=${encodeURIComponent(playlistId)}&hl=zh-TW`);
     if (res.ok) {
       const data = await res.json();
       if (data.songs && data.songs.length > 0) {
@@ -195,12 +195,12 @@ export async function fetchPlaylistSongs(playlistId) {
     // Local API not running, proceed to serverless client-side fetchers
   }
 
-  // 3. Client-Side Serverless Fetcher: Query Invidious API mirrors (No CORS issue, returns clean JSON)
+  // 3. Client-Side Serverless Fetcher: Query Invidious API mirrors with zh-TW
   for (const instance of INVIDIOUS_INSTANCES) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const url = `${instance}/api/v1/playlists/${encodeURIComponent(playlistId)}`;
+      const url = `${instance}/api/v1/playlists/${encodeURIComponent(playlistId)}?hl=zh-TW&region=TW`;
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
 

@@ -1,8 +1,8 @@
-import { 
-  SONG_CATEGORIES, 
-  extractVideoId, 
-  extractPlaylistId, 
-  fetchVideoInfo, 
+import {
+  SONG_CATEGORIES,
+  extractVideoId,
+  extractPlaylistId,
+  fetchVideoInfo,
   fetchPlaylistSongs,
   parseOffsets,
   encodeOffsets,
@@ -13,16 +13,16 @@ import { YouTubeAudioEngine } from './yt-player.js';
 // Configuration: Snippet duration tiers in milliseconds
 export const DIFFICULTY_TIERS = {
   normal: [
-    { duration: 500, label: '0.5 秒 (標準神耳)', points: 100, badge: '⚡ 神耳' },
-    { duration: 1000, label: '1.0 秒 (進階)', points: 75, badge: '🎵 敏銳' },
-    { duration: 2000, label: '2.0 秒 (提示)', points: 50, badge: '🎧 熟悉' },
-    { duration: 4000, label: '4.0 秒 (大放送)', points: 25, badge: '💡 救贖' },
+    { duration: 500, label: '0.5 秒', points: 100, badge: '' },
+    { duration: 1000, label: '1.0 秒', points: 75, badge: '' },
+    { duration: 2000, label: '2.0 秒', points: 50, badge: '' },
+    { duration: 4000, label: '4.0 秒', points: 25, badge: '' },
   ],
   hell: [
-    { duration: 150, label: '0.15 秒 (💀 鬼神一音)', points: 150, badge: '💀 鬼神一音' },
-    { duration: 300, label: '0.3 秒 (🔥 尾牙一音半)', points: 100, badge: '🔥 尾牙神人' },
-    { duration: 800, label: '0.8 秒 (半小節旋律)', points: 60, badge: '⚡ 音感敏銳' },
-    { duration: 2000, label: '2.0 秒 (救贖提示)', points: 30, badge: '🎧 救贖' },
+    { duration: 150, label: '0.15 秒', points: 150, badge: '' },
+    { duration: 300, label: '0.3 秒', points: 100, badge: '' },
+    { duration: 800, label: '0.8 秒', points: 60, badge: '' },
+    { duration: 2000, label: '2.0 秒', points: 30, badge: '' },
   ]
 };
 
@@ -33,7 +33,7 @@ class GuessGameApp {
     this.gameMode = 'choice'; // 'choice' or 'search'
     this.difficulty = localStorage.getItem('yt_guesser_difficulty') || 'normal';
     this.urlOffsets = {};
-    
+
     this.songs = [];
     this.currentSong = null;
     this.tierIndex = 0; // 0 to 3
@@ -116,6 +116,9 @@ class GuessGameApp {
     this.streakEl = document.getElementById('streak-count');
     this.bestStreakEl = document.getElementById('best-streak-count');
     this.scoreEl = document.getElementById('score-count');
+    this.streakElMobile = document.getElementById('streak-count-mobile');
+    this.bestStreakElMobile = document.getElementById('best-streak-count-mobile');
+    this.scoreElMobile = document.getElementById('score-count-mobile');
 
     // Category Buttons & Top Challenge Copy Button
     this.categoryBtns = document.querySelectorAll('.cat-btn');
@@ -207,9 +210,7 @@ class GuessGameApp {
   }
 
   async start() {
-    this.streakEl.textContent = this.streak;
-    this.bestStreakEl.textContent = this.bestStreak;
-    this.scoreEl.textContent = this.score;
+    this.updateStatsUI();
 
     // Seed player with verified first song
     const defaultSongs = SONG_CATEGORIES['tanya']?.songs || [];
@@ -222,7 +223,7 @@ class GuessGameApp {
         this.setAudioStatus('buffering', '音訊緩衝中，請稍候...');
       } else if (stateName === 'cued' || stateName === 'ready' || stateName === 'paused') {
         if (!this.isPlaying) {
-          this.setAudioStatus('ready', '音訊就緒，隨時可按播放');
+          this.setAudioStatus('ready', '音訊就緒');
         }
       }
     };
@@ -288,7 +289,7 @@ class GuessGameApp {
     let savedOffsets = {};
     try {
       savedOffsets = JSON.parse(localStorage.getItem(this.getOffsetsStorageKey()) || '{}');
-    } catch (e) {}
+    } catch (e) { }
 
     // Merge URL offsets over saved offsets if available
     const merged = { ...savedOffsets, ...this.urlOffsets };
@@ -303,12 +304,12 @@ class GuessGameApp {
       return;
     }
     this.currentSong.start = sec;
-    
+
     // Save to local storage map
     let savedOffsets = {};
     try {
       savedOffsets = JSON.parse(localStorage.getItem(this.getOffsetsStorageKey()) || '{}');
-    } catch (e) {}
+    } catch (e) { }
     savedOffsets[this.currentSong.id] = sec;
     localStorage.setItem(this.getOffsetsStorageKey(), JSON.stringify(savedOffsets));
 
@@ -318,7 +319,7 @@ class GuessGameApp {
   shareCurrentChallengeUrl() {
     const baseUrl = window.location.origin + window.location.pathname;
     const encodedOffsets = encodeOffsets(this.songs);
-    
+
     let targetUrl = baseUrl;
     if (this.currentCategoryKey === 'custom') {
       if (this.customPlaylistId) {
@@ -407,8 +408,8 @@ class GuessGameApp {
     if (this.playlistCompletedCard) {
       this.playlistCompletedCard.classList.remove('hidden');
       if (this.completedCardDesc) {
-        const catName = this.currentCategoryKey === 'custom' 
-          ? this.customPlaylistTitle 
+        const catName = this.currentCategoryKey === 'custom'
+          ? this.customPlaylistTitle
           : SONG_CATEGORIES[this.currentCategoryKey]?.name;
         this.completedCardDesc.textContent = `恭喜！你已經成功猜中「${catName}」中全部 ${this.songs.length} 首歌曲！`;
       }
@@ -427,11 +428,9 @@ class GuessGameApp {
     this.currentCategoryKey = categoryKey;
     this.categoryBtns.forEach(btn => {
       if (btn.dataset.category === categoryKey) {
-        btn.classList.add('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-600/30');
-        btn.classList.remove('bg-slate-800', 'text-slate-300');
+        btn.className = 'cat-btn px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-md shadow-[#EB4203]/25 whitespace-nowrap transition-all font-bold';
       } else {
-        btn.classList.remove('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-600/30');
-        btn.classList.add('bg-slate-800', 'text-slate-300');
+        btn.className = 'cat-btn px-3.5 sm:px-4 py-2 rounded-xl bg-slate-800/90 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition-all font-bold';
       }
     });
 
@@ -484,12 +483,12 @@ class GuessGameApp {
       this.diffToggleBtns.forEach(btn => {
         if (btn.dataset.diff === this.difficulty) {
           if (this.difficulty === 'hell') {
-            btn.className = 'diff-toggle-btn px-2.5 py-1 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-white font-extrabold shadow-lg shadow-orange-600/30 transition-all flex items-center';
+            btn.className = 'diff-toggle-btn flex-1 md:flex-initial px-2.5 py-1 rounded-md md:rounded-lg bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] font-black shadow-md shadow-[#EB4203]/30 transition-all flex items-center justify-center';
           } else {
-            btn.className = 'diff-toggle-btn px-2.5 py-1 rounded-lg bg-slate-700 text-white font-semibold transition-all flex items-center';
+            btn.className = 'diff-toggle-btn flex-1 md:flex-initial px-2.5 py-1 rounded-md md:rounded-lg bg-slate-700 text-white font-semibold transition-all flex items-center justify-center';
           }
         } else {
-          btn.className = 'diff-toggle-btn px-2.5 py-1 rounded-lg text-slate-400 font-bold hover:text-white transition-all flex items-center';
+          btn.className = 'diff-toggle-btn flex-1 md:flex-initial px-2.5 py-1 rounded-md md:rounded-lg text-slate-400 font-bold hover:text-white transition-all flex items-center justify-center';
         }
       });
     }
@@ -501,7 +500,7 @@ class GuessGameApp {
       this.updateTierUI();
       this.btnPlay.innerHTML = `
         <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
-        播放 ${this.difficulty === 'hell' ? '0.15s 一音前奏' : '前奏音訊'}
+        播放 ${this.difficulty === 'hell' ? '0.15 秒' : '0.5 秒'}
       `;
       if (window.lucide) window.lucide.createIcons();
     }
@@ -510,19 +509,19 @@ class GuessGameApp {
   setAudioStatus(status, text) {
     if (!this.audioStatusText || !this.audioStatusDot) return;
     this.audioStatusText.textContent = text;
-    
+
     // Reset dot classes
     this.audioStatusDot.className = 'w-2.5 h-2.5 rounded-full';
     if (status === 'ready') {
-      this.audioStatusDot.classList.add('bg-emerald-500');
+      this.audioStatusDot.classList.add('bg-[#00CEC8]');
     } else if (status === 'buffering') {
-      this.audioStatusDot.classList.add('bg-amber-400', 'animate-ping');
+      this.audioStatusDot.classList.add('bg-[#FF9C5F]', 'animate-ping');
     } else if (status === 'playing') {
-      this.audioStatusDot.classList.add('bg-red-500', 'animate-pulse');
+      this.audioStatusDot.classList.add('bg-[#EB4203]', 'animate-pulse');
     } else if (status === 'paused') {
       this.audioStatusDot.classList.add('bg-slate-400');
     } else if (status === 'timeout') {
-      this.audioStatusDot.classList.add('bg-rose-500');
+      this.audioStatusDot.classList.add('bg-[#EB4203]');
     }
   }
 
@@ -571,7 +570,7 @@ class GuessGameApp {
     this.btnPlay.disabled = false;
     this.btnPlay.innerHTML = `
       <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
-      播放 ${this.difficulty === 'hell' ? '0.15s 一音前奏' : '前奏音訊'}
+      播放 ${this.difficulty === 'hell' ? '0.15 秒' : '0.5 秒'}
     `;
     this.btnReplay.classList.add('hidden');
     this.btnNextTier.classList.add('hidden');
@@ -587,7 +586,7 @@ class GuessGameApp {
 
   renderChoices() {
     this.choicesGrid.innerHTML = '';
-    
+
     // Pick 3 random distractors
     const distractors = this.songs
       .filter(s => s.id !== this.currentSong.id)
@@ -599,18 +598,18 @@ class GuessGameApp {
 
     options.forEach((song, idx) => {
       const btn = document.createElement('button');
-      btn.className = 'w-full p-4 rounded-xl glass-card text-left transition-all duration-200 hover:border-red-500/50 hover:bg-slate-800/80 active:scale-[0.99] flex items-center justify-between group';
+      btn.className = 'w-full p-3 sm:p-4 rounded-2xl glass-card text-left transition-all duration-200 hover:border-[#00CEC8]/60 hover:bg-[#161d2e] active:scale-[0.98] flex items-center justify-between group min-h-[56px] shadow-sm';
       btn.innerHTML = `
-        <div class="flex items-center space-x-3 overflow-hidden">
-          <span class="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs group-hover:bg-red-500/20 group-hover:text-red-400">
+        <div class="flex items-center space-x-2.5 sm:space-x-3 overflow-hidden">
+          <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-800/80 text-[#00CEC8] border border-slate-700/60 flex items-center justify-center font-black text-xs group-hover:bg-[#00CEC8]/20 group-hover:border-[#00CEC8]/40 transition-colors flex-shrink-0">
             ${['A', 'B', 'C', 'D'][idx]}
           </span>
           <div class="truncate">
-            <p class="font-bold text-slate-200 text-sm md:text-base truncate group-hover:text-white">${song.title}</p>
-            <p class="text-xs text-slate-400 truncate">${song.artist}</p>
+            <p class="font-bold text-[#FCEFC3] text-sm sm:text-base truncate group-hover:text-white">${song.title}</p>
+            <p class="text-[11px] sm:text-xs text-slate-400 truncate group-hover:text-slate-300">${song.artist}</p>
           </div>
         </div>
-        <span class="text-slate-500 group-hover:text-red-400 text-xs font-mono ml-2">猜這首</span>
+        <span class="text-slate-500 group-hover:text-[#FF9C5F] text-[11px] sm:text-xs font-mono ml-2 flex-shrink-0">猜這首</span>
       `;
       btn.addEventListener('click', () => this.handleGuess(song, btn));
       this.choicesGrid.appendChild(btn);
@@ -625,12 +624,12 @@ class GuessGameApp {
     }
 
     const q = query.toLowerCase().trim();
-    const matches = this.songs.filter(s => 
+    const matches = this.songs.filter(s =>
       s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
     ).slice(0, 6);
 
     if (matches.length === 0) {
-      this.searchResults.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">找不到匹配歌曲，可試著輸入歌手名稱</div>`;
+      this.searchResults.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">找不到歌曲，可試著輸入歌手名稱</div>`;
       this.searchResults.classList.remove('hidden');
       return;
     }
@@ -638,13 +637,13 @@ class GuessGameApp {
     this.searchResults.innerHTML = '';
     matches.forEach(song => {
       const item = document.createElement('button');
-      item.className = 'w-full text-left p-3 hover:bg-slate-800 flex items-center justify-between border-b border-slate-700/50 last:border-0 transition-colors';
+      item.className = 'w-full text-left p-3 hover:bg-[#161d2e] flex items-center justify-between border-b border-slate-700/50 last:border-0 transition-colors';
       item.innerHTML = `
-        <div class="truncate">
-          <p class="font-medium text-slate-200 text-sm truncate">${song.title}</p>
+        <div class="truncate mr-2">
+          <p class="font-medium text-[#FCEFC3] text-sm truncate">${song.title}</p>
           <p class="text-xs text-slate-400 truncate">${song.artist}</p>
         </div>
-        <span class="text-xs text-red-400 font-semibold ml-2">送出</span>
+        <span class="text-xs text-[#00CEC8] font-semibold flex-shrink-0">送出</span>
       `;
       item.addEventListener('click', () => {
         this.searchResults.classList.add('hidden');
@@ -659,13 +658,13 @@ class GuessGameApp {
     if (this.isPlaying) return;
     const tier = this.tiers[this.tierIndex];
     this.isPlaying = true;
-    
-    const durationText = tier.duration >= 1000 
-      ? `${(tier.duration / 1000).toFixed(1)}s` 
+
+    const durationText = tier.duration >= 1000
+      ? `${(tier.duration / 1000).toFixed(1)}s`
       : `${tier.duration}ms`;
 
     // UI state: buffering before audio starts
-    this.setAudioStatus('buffering', `正在連線緩衝音訊 (${durationText})...`);
+    this.setAudioStatus('buffering', `音訊準備中 (${durationText})`);
     this.btnPlay.classList.add('pulse-active');
     this.btnPlay.disabled = true;
     this.btnPlay.innerHTML = `
@@ -735,26 +734,26 @@ class GuessGameApp {
     const tier = this.tiers[this.tierIndex];
     const isHell = this.difficulty === 'hell';
     this.tierLabel.innerHTML = `
-      <span class="${isHell ? 'text-orange-400 font-black' : 'text-red-400 font-bold'}">${tier.label}</span>
-      <span class="text-xs ${isHell ? 'text-orange-300/80 font-bold' : 'text-slate-400'} ml-2">(+${tier.points} 分)</span>
+      <span class="${isHell ? 'text-[#FF9C5F] font-black' : 'text-[#00CEC8] font-bold'}">${tier.label}</span>
+      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-2">(+${tier.points} 分)</span>
     `;
 
     this.tierBars.forEach((bar, idx) => {
       if (idx <= this.tierIndex) {
         if (isHell) {
-          bar.className = 'tier-bar rounded-full transition-all duration-300 bg-gradient-to-r from-orange-500 to-red-500 shadow-[0_0_12px_rgba(249,115,22,0.8)]';
+          bar.className = 'tier-bar rounded-full transition-all duration-300 bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] shadow-[0_0_12px_rgba(235,66,3,0.8)]';
         } else {
-          bar.className = 'tier-bar rounded-full transition-all duration-300 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]';
+          bar.className = 'tier-bar rounded-full transition-all duration-300 bg-gradient-to-r from-[#00CEC8] to-[#FF9C5F] shadow-[0_0_10px_rgba(0,206,200,0.5)]';
         }
       } else {
-        bar.className = 'tier-bar rounded-full transition-all duration-300 bg-slate-700';
+        bar.className = 'tier-bar rounded-full transition-all duration-300 bg-slate-800';
       }
     });
 
     if (this.tierIndex < this.tiers.length - 1) {
       const nextTier = this.tiers[this.tierIndex + 1];
-      const nextDuration = nextTier.duration >= 1000 
-        ? `${(nextTier.duration / 1000).toFixed(1)}s` 
+      const nextDuration = nextTier.duration >= 1000
+        ? `${(nextTier.duration / 1000).toFixed(1)}s`
         : `${nextTier.duration}ms`;
       this.btnNextTier.innerHTML = `
         <i data-lucide="fast-forward" class="w-4 h-4 mr-1"></i>
@@ -770,13 +769,13 @@ class GuessGameApp {
     if (guessedSong.id === this.currentSong.id) {
       // CORRECT!
       if (targetButton) {
-        targetButton.classList.add('border-emerald-500', 'bg-emerald-950/60', 'text-emerald-300');
+        targetButton.classList.add('border-[#00CEC8]', 'bg-[#00CEC8]/20', 'text-[#00CEC8]');
       }
       this.onRoundSuccess();
     } else {
       // WRONG!
       if (targetButton) {
-        targetButton.classList.add('border-red-500', 'bg-red-950/50', 'text-red-400');
+        targetButton.classList.add('border-[#EB4203]', 'bg-[#EB4203]/20', 'text-[#FF9C5F]');
         targetButton.disabled = true;
       }
       this.onRoundWrong();
@@ -844,12 +843,12 @@ class GuessGameApp {
     this.revealArtist.textContent = this.currentSong.artist;
 
     if (isSuccess) {
-      this.revealStatus.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      this.revealStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#00CEC8]/20 text-[#00CEC8] border border-[#00CEC8]/30';
       this.revealStatus.textContent = `太神了！${badge}`;
       this.revealPoints.textContent = `+${points} 分`;
-      this.revealPoints.className = 'text-emerald-400 font-extrabold text-sm';
+      this.revealPoints.className = 'text-[#00CEC8] font-extrabold text-sm';
     } else {
-      this.revealStatus.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30';
+      this.revealStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EB4203]/20 text-[#FF9C5F] border border-[#EB4203]/30';
       this.revealStatus.textContent = '殘念！再接再厲';
       this.revealPoints.textContent = `+0 分`;
       this.revealPoints.className = 'text-slate-500 font-bold text-sm';
@@ -866,9 +865,13 @@ class GuessGameApp {
   }
 
   updateStatsUI() {
-    this.streakEl.textContent = this.streak;
-    this.bestStreakEl.textContent = this.bestStreak;
-    this.scoreEl.textContent = this.score;
+    if (this.streakEl) this.streakEl.textContent = this.streak;
+    if (this.bestStreakEl) this.bestStreakEl.textContent = this.bestStreak;
+    if (this.scoreEl) this.scoreEl.textContent = this.score;
+
+    if (this.streakElMobile) this.streakElMobile.textContent = this.streak;
+    if (this.bestStreakElMobile) this.bestStreakElMobile.textContent = this.bestStreak;
+    if (this.scoreElMobile) this.scoreElMobile.textContent = this.score;
   }
 
   triggerConfetti() {
@@ -890,24 +893,24 @@ class GuessGameApp {
     }
 
     const currentTier = this.tiers[this.tierIndex];
-    const durationLabel = currentTier.duration >= 1000 
-      ? `${(currentTier.duration / 1000).toFixed(1)}s` 
+    const durationLabel = currentTier.duration >= 1000
+      ? `${(currentTier.duration / 1000).toFixed(1)}s`
       : `${currentTier.duration}ms`;
 
-    const titlePrefix = this.difficulty === 'hell' 
-      ? `🔥【地獄模式】YouTube 0.15s 一音神猜！\n` 
-      : `🎧 YouTube 0.5秒猜歌神耳挑戰！\n`;
+    const titlePrefix = this.difficulty === 'hell'
+      ? `🔥【進階】0.15 秒猜歌挑戰！\n`
+      : `0.5 秒猜歌挑戰！\n`;
 
     const shareText = `${titlePrefix}` +
       `關卡：${this.currentCategoryKey === 'custom' ? this.customPlaylistTitle : SONG_CATEGORIES[this.currentCategoryKey]?.name}\n` +
       `歌曲：${this.currentSong.title}\n` +
       `成績：${tierBlocks.join('')} (${durationLabel} 解鎖)\n` +
-      `當前連勝：🔥 ${this.streak} | 總分：${this.score}\n` +
+      `目前連勝：${this.streak} | 總分：${this.score}\n` +
       `快來挑戰你的音樂直覺！`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText).then(() => {
-        alert('✨ 成果已複製至剪貼簿！可直接貼到 Threads, IG, LINE 炫耀！');
+        alert('✨ 戰績已複製!');
       });
     } else {
       alert(shareText);
@@ -1025,14 +1028,14 @@ class GuessGameApp {
       challengeUrl += `?list=${encodeURIComponent(this.customPlaylistId)}`;
     }
 
-    const shareText = `🎵 我在 YouTube 0.5秒猜歌王出題了！\n` +
+    const shareText = `快來挑戰我的秒速猜歌！\n` +
       `專屬歌單：${this.customPlaylistTitle}\n` +
-      `考驗你是不是真愛粉，敢來挑戰聽前奏 0.5 秒猜出歌名嗎？\n` +
+      `鐵粉是你嗎？快來聽前奏 0.5 秒猜歌！\n` +
       `${challengeUrl}`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText).then(() => {
-        alert('✨ 專屬歌單考題連結已複製至剪貼簿！可直接貼給朋友挑戰！');
+        alert('✨ 專屬歌單考題連結已複製至剪貼簿！');
       });
     } else {
       alert(shareText);
@@ -1075,12 +1078,12 @@ class GuessGameApp {
       row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs';
       row.innerHTML = `
         <div class="truncate mr-2">
-          <p class="font-bold text-slate-200 truncate">${s.title}</p>
+          <p class="font-bold text-[#FCEFC3] truncate">${s.title}</p>
           <p class="text-[11px] text-slate-400 truncate">
-            ${s.artist} ${s.start > 0 ? `<span class="text-red-400 font-mono">(${s.start}s起)</span>` : ''}
+            ${s.artist} ${s.start > 0 ? `<span class="text-[#FF9C5F] font-mono">(${s.start}s起)</span>` : ''}
           </p>
         </div>
-        <button data-index="${idx}" class="btn-delete-custom text-red-400 hover:text-red-300 p-1 flex-shrink-0 text-[11px]">
+        <button data-index="${idx}" class="btn-delete-custom text-[#FF9C5F] hover:text-[#EB4203] p-1 flex-shrink-0 text-[11px] font-bold">
           刪除
         </button>
       `;
