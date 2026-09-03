@@ -1,0 +1,126 @@
+/* YouTube Music Guesser - Custom CSS & Animations */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4), inset 0 0 15px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.7), inset 0 0 25px rgba(239, 68, 68, 0.4);
+  }
+}
+
+@keyframes wave-bar {
+  0%, 100% {
+    height: 8px;
+  }
+  50% {
+    height: 38px;
+  }
+}
+
+.vinyl-disc {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vinyl-disc.playing {
+  animation: spin-slow 4s linear infinite;
+}
+
+.pulse-active {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.wave-bar {
+  animation: wave-bar 1.2s ease-in-out infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* YouTube player container with blind mask */
+#yt-player-wrapper {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 220px;
+  height: 124px;
+  z-index: 30;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #020617;
+}
+
+@media (max-width: 640px) {
+  #yt-player-wrapper {
+    width: 140px;
+    height: 80px;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+
+#yt-player-wrapper.blind-mode::after {
+  content: '🎧 盲聽模式中';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.96);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  letter-spacing: 0.05em;
+  border-radius: 12px;
+}
+
+#yt-player-wrapper.revealed-mode {
+  transform: scale(1.05);
+  box-shadow: 0 15px 30px rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+#yt-player-wrapper.revealed-mode::after {
+  display: none;
+}
