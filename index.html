@@ -11,6 +11,9 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
+      future: {
+        hoverOnlyWhenSupported: true
+      },
       theme: {
         extend: {
           colors: {
@@ -493,7 +496,7 @@
   </div>
 
   <!-- Floating YouTube Player Container (With Blind Mask) -->
-  <div id="yt-player-wrapper">
+  <div id="yt-player-wrapper" class="blind-mode">
     <div id="yt-player-target"></div>
   </div>
 

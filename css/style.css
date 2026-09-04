@@ -111,7 +111,14 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 206, 200, 0.2);
   border: 1px solid rgba(0, 206, 200, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #06090e;
+  background: #080c14;
+}
+
+#yt-player-wrapper iframe,
+#yt-player-wrapper #yt-player-target {
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
 @media (max-width: 640px) {
@@ -124,27 +131,49 @@
   }
 }
 
+/* Blind Mode: Completely opaque shield, 0% iframe opacity, 100% cheat-proof */
+#yt-player-wrapper.blind-mode {
+  background: #080c14 !important;
+}
+
+#yt-player-wrapper.blind-mode iframe,
+#yt-player-wrapper.blind-mode #yt-player-target {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  filter: blur(25px);
+}
+
 #yt-player-wrapper.blind-mode::after {
   content: '🎧 盲聽模式';
   position: absolute;
   inset: 0;
-  background: rgba(11, 15, 23, 0.96);
+  background: #080c14;
   color: #00CEC8;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  z-index: 10;
-  letter-spacing: 0.05em;
+  z-index: 20;
+  letter-spacing: 0.08em;
   border-radius: inherit;
+  border: 1px solid rgba(0, 206, 200, 0.35);
+  box-shadow: inset 0 0 15px rgba(0, 206, 200, 0.1);
 }
 
+/* Revealed Mode: When round ends, show video smoothly */
 #yt-player-wrapper.revealed-mode {
   transform: scale(1.05);
   box-shadow: 0 15px 35px rgba(235, 66, 3, 0.4), 0 0 20px rgba(0, 206, 200, 0.4);
   border-color: #EB4203;
+}
+
+#yt-player-wrapper.revealed-mode iframe,
+#yt-player-wrapper.revealed-mode #yt-player-target {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  filter: none;
 }
 
 #yt-player-wrapper.revealed-mode::after {
@@ -156,3 +185,47 @@ button, .btn-touch {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+
+/* Choice buttons mobile touch & hover isolation */
+.choice-btn {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none !important;
+}
+
+.choice-btn:focus,
+.choice-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Hover ONLY on devices that actually support hover (mouse / fine pointer) */
+@media (hover: hover) and (pointer: fine) {
+  .choice-btn:hover {
+    border-color: rgba(0, 206, 200, 0.6) !important;
+    background-color: #161d2e !important;
+  }
+  .choice-btn:hover .choice-badge {
+    background-color: rgba(0, 206, 200, 0.2) !important;
+    border-color: rgba(0, 206, 200, 0.5) !important;
+  }
+  .choice-btn:hover .choice-title {
+    color: #ffffff !important;
+  }
+  .choice-btn:hover .choice-artist {
+    color: #cbd5e1 !important;
+  }
+  .choice-btn:hover .choice-action {
+    color: #FF9C5F !important;
+  }
+}
+
+/* Immediate tactile feedback on touch/active without lingering */
+.choice-btn:active {
+  transform: scale(0.98);
+  background-color: #161d2e !important;
+  border-color: rgba(0, 206, 200, 0.4) !important;
+}
+

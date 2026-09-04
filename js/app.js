@@ -145,7 +145,10 @@ class GuessGameApp {
     this.btnReplay.addEventListener('click', () => this.playCurrentSnippet());
     this.btnNextTier.addEventListener('click', () => this.advanceTier());
     this.btnGiveUp.addEventListener('click', () => this.giveUp());
-    this.btnNextSong.addEventListener('click', () => this.startNewRound());
+    this.btnNextSong.addEventListener('click', () => {
+      this.btnNextSong.blur();
+      this.startNewRound();
+    });
     this.btnShare.addEventListener('click', () => this.shareResult());
 
     // Copy challenge URL (top nav & reveal card)
@@ -577,7 +580,10 @@ class GuessGameApp {
     this.btnGiveUp.classList.remove('hidden');
     this.searchInput.value = '';
     this.searchResults.innerHTML = '';
-    this.searchResults.classList.add('hidden');
+    // Unfocus active element to prevent sticky hover/focus on mobile
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
 
     this.updateTierUI();
     this.renderChoices();
@@ -598,20 +604,26 @@ class GuessGameApp {
 
     options.forEach((song, idx) => {
       const btn = document.createElement('button');
-      btn.className = 'w-full p-3 sm:p-4 rounded-2xl glass-card text-left transition-all duration-200 hover:border-[#00CEC8]/60 hover:bg-[#161d2e] active:scale-[0.98] flex items-center justify-between group min-h-[56px] shadow-sm';
+      btn.type = 'button';
+      btn.className = 'choice-btn w-full p-3 sm:p-4 rounded-2xl glass-card text-left transition-all duration-150 flex items-center justify-between min-h-[56px] shadow-sm';
       btn.innerHTML = `
-        <div class="flex items-center space-x-2.5 sm:space-x-3 overflow-hidden">
-          <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-800/80 text-[#00CEC8] border border-slate-700/60 flex items-center justify-center font-black text-xs group-hover:bg-[#00CEC8]/20 group-hover:border-[#00CEC8]/40 transition-colors flex-shrink-0">
+        <div class="flex items-center space-x-2.5 sm:space-x-3 overflow-hidden pointer-events-none">
+          <span class="choice-badge w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-800/80 text-[#00CEC8] border border-slate-700/60 flex items-center justify-center font-black text-xs transition-colors flex-shrink-0">
             ${['A', 'B', 'C', 'D'][idx]}
           </span>
           <div class="truncate">
-            <p class="font-bold text-[#FCEFC3] text-sm sm:text-base truncate group-hover:text-white">${song.title}</p>
-            <p class="text-[11px] sm:text-xs text-slate-400 truncate group-hover:text-slate-300">${song.artist}</p>
+            <p class="choice-title font-bold text-[#FCEFC3] text-sm sm:text-base truncate transition-colors">${song.title}</p>
+            <p class="choice-artist text-[11px] sm:text-xs text-slate-400 truncate transition-colors">${song.artist}</p>
           </div>
         </div>
-        <span class="text-slate-500 group-hover:text-[#FF9C5F] text-[11px] sm:text-xs font-mono ml-2 flex-shrink-0">猜這首</span>
+        <span class="choice-action text-slate-500 text-[11px] sm:text-xs font-mono ml-2 flex-shrink-0 transition-colors pointer-events-none">猜這首</span>
       `;
-      btn.addEventListener('click', () => this.handleGuess(song, btn));
+      btn.addEventListener('click', () => {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          document.activeElement.blur();
+        }
+        this.handleGuess(song, btn);
+      });
       this.choicesGrid.appendChild(btn);
     });
   }
@@ -765,6 +777,10 @@ class GuessGameApp {
 
   handleGuess(guessedSong, targetButton) {
     if (this.isRoundOver) return;
+
+    if (targetButton && typeof targetButton.blur === 'function') {
+      targetButton.blur();
+    }
 
     if (guessedSong.id === this.currentSong.id) {
       // CORRECT!
