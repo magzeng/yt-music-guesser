@@ -1,7 +1,13 @@
 import {
+  DEFAULT_PLAYLIST_ID,
+  DEFAULT_PLAYLIST_TITLE,
   SONG_CATEGORIES,
   extractVideoId,
   extractPlaylistId,
+  cleanPlaylistUrl,
+  cleanVideoUrl,
+  encodeSongsPayload,
+  decodeSongsPayload,
   fetchVideoInfo,
   fetchPlaylistSongs,
   parseOffsets,
@@ -13,23 +19,24 @@ import { YouTubeAudioEngine } from './yt-player.js';
 // Configuration: Snippet duration tiers in milliseconds
 export const DIFFICULTY_TIERS = {
   normal: [
-    { duration: 500, label: '0.5 秒', points: 100, badge: '' },
-    { duration: 1000, label: '1.0 秒', points: 75, badge: '' },
-    { duration: 2000, label: '2.0 秒', points: 50, badge: '' },
-    { duration: 4000, label: '4.0 秒', points: 25, badge: '' },
+    { duration: 500, label: '0.5 秒', points: 100, badge: '⚡ 極速神耳' },
+    { duration: 1000, label: '1.0 秒', points: 70, badge: '🎵 實力派' },
+    { duration: 2000, label: '2.0 秒', points: 40, badge: '👂 聽感敏銳' },
+    { duration: 4000, label: '4.0 秒', points: 20, badge: '👌 順利通關' },
   ],
   hell: [
-    { duration: 150, label: '0.15 秒', points: 150, badge: '' },
-    { duration: 300, label: '0.3 秒', points: 100, badge: '' },
-    { duration: 800, label: '0.8 秒', points: 60, badge: '' },
-    { duration: 2000, label: '2.0 秒', points: 30, badge: '' },
+    { duration: 150, label: '0.15 秒', points: 200, badge: '🔥 超神反應' },
+    { duration: 300, label: '0.3 秒', points: 140, badge: '⚡ 鋼鐵聽力' },
+    { duration: 800, label: '0.8 秒', points: 80, badge: '🎵 絕佳直覺' },
+    { duration: 2000, label: '2.0 秒', points: 40, badge: '👌 險勝過關' },
   ]
 };
 
 class GuessGameApp {
   constructor() {
-    this.audioEngine = new YouTubeAudioEngine('yt-player-target', 'vg2pgKLBYo4');
-    this.currentCategoryKey = 'tanya';
+    this.audioEngine = new YouTubeAudioEngine('yt-player-target', '_GiJ2bLLGLk');
+    this.currentCategoryKey = 'default';
+    this.defaultSongs = [];
     this.gameMode = 'choice'; // 'choice' or 'search'
     this.difficulty = localStorage.getItem('yt_guesser_difficulty') || 'normal';
     this.urlOffsets = {};
@@ -60,6 +67,13 @@ class GuessGameApp {
 
   get tiers() {
     return DIFFICULTY_TIERS[this.difficulty] || DIFFICULTY_TIERS.normal;
+  }
+
+  getTierPoints(tierIndex = this.tierIndex) {
+    const tier = this.tiers[tierIndex];
+    if (!tier) return 0;
+    const multiplier = this.gameMode === 'search' ? 1.5 : 1.0;
+    return Math.round(tier.points * multiplier);
   }
 
   initElements() {
@@ -210,14 +224,36 @@ class GuessGameApp {
     this.btnAddCustom.addEventListener('click', () => this.handleAddCustomSong());
     this.btnShareCustomChallenge.addEventListener('click', () => this.shareCustomChallenge());
     this.btnClearCustom.addEventListener('click', () => this.clearCustomSongs());
+
+    // Auto-clean mobile tracking parameters (&si=..., &feature=..., etc.)
+    if (this.playlistUrlInput) {
+      this.playlistUrlInput.addEventListener('paste', () => {
+        setTimeout(() => {
+          this.playlistUrlInput.value = cleanPlaylistUrl(this.playlistUrlInput.value);
+        }, 10);
+      });
+      this.playlistUrlInput.addEventListener('change', () => {
+        this.playlistUrlInput.value = cleanPlaylistUrl(this.playlistUrlInput.value);
+      });
+    }
+
+    if (this.customUrlInput) {
+      this.customUrlInput.addEventListener('paste', () => {
+        setTimeout(() => {
+          this.customUrlInput.value = cleanVideoUrl(this.customUrlInput.value);
+        }, 10);
+      });
+      this.customUrlInput.addEventListener('change', () => {
+        this.customUrlInput.value = cleanVideoUrl(this.customUrlInput.value);
+      });
+    }
   }
 
   async start() {
     this.updateStatsUI();
 
-    // Seed player with verified first song
-    const defaultSongs = SONG_CATEGORIES['tanya']?.songs || [];
-    const seedId = defaultSongs[0]?.id || 'vg2pgKLBYo4';
+    // Seed player with verified first song from default playlist
+    const seedId = '_GiJ2bLLGLk';
 
     // Player state updates (loading/buffering/ready)
     this.audioEngine.onStateUpdateCallback = (stateName) => {
@@ -248,12 +284,13 @@ class GuessGameApp {
       this.hideLoading();
     }
 
-    // Check if URL has ?list= or ?playlist= or ?cat= or ?offsets= or ?diff=
+    // Check if URL has ?list= or ?playlist= or ?cat= or ?offsets= or ?diff= or ?songs=
     const urlParams = new URLSearchParams(window.location.search);
     const incomingList = urlParams.get('list') || urlParams.get('playlist');
     const incomingCat = urlParams.get('cat');
     const incomingOffsets = urlParams.get('offsets');
     const incomingDiff = urlParams.get('diff') || urlParams.get('difficulty');
+    const incomingSongs = urlParams.get('songs');
 
     if (incomingDiff === 'hell') {
       this.setDifficulty('hell');
@@ -265,19 +302,50 @@ class GuessGameApp {
       this.urlOffsets = parseOffsets(incomingOffsets);
     }
 
-    if (incomingList) {
-      // Check if matching preset playlists
-      if (incomingList === SONG_CATEGORIES.tanya.playlistId) {
-        this.selectCategory('tanya');
-      } else if (incomingList === SONG_CATEGORIES.acoustic.playlistId) {
-        this.selectCategory('acoustic');
-      } else {
-        await this.importPlaylistById(incomingList, true);
+    // Direct Chinese songs payload unpack (instant load without serverless API)
+    if (incomingSongs) {
+      const decoded = decodeSongsPayload(incomingSongs);
+      if (decoded && decoded.songs && decoded.songs.length >= 4) {
+        this.customSongs = decoded.songs;
+        this.customPlaylistTitle = decoded.title || '好友分享題庫';
+        this.customPlaylistId = incomingList ? (extractPlaylistId(incomingList) || incomingList) : 'shared';
+        localStorage.setItem('yt_guesser_custom_songs', JSON.stringify(this.customSongs));
+        localStorage.setItem('yt_guesser_custom_playlist_id', this.customPlaylistId);
+        localStorage.setItem('yt_guesser_custom_playlist_title', this.customPlaylistTitle);
+        this.updateCustomNavVisibility();
+        this.selectCategory('custom');
+        return;
       }
-    } else if (incomingCat && SONG_CATEGORIES[incomingCat]) {
-      this.selectCategory(incomingCat);
+    }
+
+    this.updateCustomNavVisibility();
+
+    if (incomingList) {
+      const cleanListId = extractPlaylistId(incomingList) || incomingList;
+      if (cleanListId === DEFAULT_PLAYLIST_ID) {
+        await this.selectCategory('default');
+      } else {
+        await this.importPlaylistById(cleanListId, true);
+      }
+    } else if (incomingCat && incomingCat === 'custom' && this.customSongs.length >= 4) {
+      await this.selectCategory('custom');
     } else {
-      this.selectCategory('tanya');
+      await this.selectCategory('default');
+    }
+  }
+
+  updateCustomNavVisibility() {
+    const customCatBtn = document.querySelector('[data-category="custom"]');
+    if (!customCatBtn) return;
+    if (this.customSongs && this.customSongs.length > 0) {
+      customCatBtn.classList.remove('hidden');
+      const title = this.customPlaylistTitle && this.customPlaylistTitle !== '自訂題庫'
+        ? `${this.customPlaylistTitle.slice(0, 8)}...`
+        : '自訂題庫';
+      customCatBtn.innerHTML = `<i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> ${title}`;
+      if (window.lucide) window.lucide.createIcons();
+    } else {
+      customCatBtn.classList.add('hidden');
     }
   }
 
@@ -325,22 +393,17 @@ class GuessGameApp {
 
     let targetUrl = baseUrl;
     if (this.currentCategoryKey === 'custom') {
+      const payload = encodeSongsPayload(this.songs, this.customPlaylistTitle);
       if (this.customPlaylistId) {
-        targetUrl += `?list=${encodeURIComponent(this.customPlaylistId)}`;
+        targetUrl += `?list=${encodeURIComponent(this.customPlaylistId)}&songs=${payload}`;
       } else {
-        targetUrl += `?cat=custom`;
+        targetUrl += `?cat=custom&songs=${payload}`;
       }
     } else {
-      const playlistId = SONG_CATEGORIES[this.currentCategoryKey]?.playlistId;
-      if (playlistId) {
-        targetUrl += `?list=${encodeURIComponent(playlistId)}`;
-      } else {
-        targetUrl += `?cat=${this.currentCategoryKey}`;
+      targetUrl += `?list=${encodeURIComponent(DEFAULT_PLAYLIST_ID)}`;
+      if (encodedOffsets) {
+        targetUrl += `&offsets=${encodeURIComponent(encodedOffsets)}`;
       }
-    }
-
-    if (encodedOffsets) {
-      targetUrl += `&offsets=${encodeURIComponent(encodedOffsets)}`;
     }
 
     if (this.difficulty === 'hell') {
@@ -349,7 +412,7 @@ class GuessGameApp {
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(targetUrl).then(() => {
-        alert(`🔗 專屬挑戰連結已複製至剪貼簿！\n\n網址已包含歌單與自訂起始秒數參數：\n${targetUrl}`);
+        alert(`🔗 專屬挑戰連結已複製至剪貼簿！\n\n網址已包含繁體中文歌單與起始秒數設定，好友點開即可直接遊玩：\n${targetUrl}`);
       });
     } else {
       prompt('請複製挑戰連結：', targetUrl);
@@ -413,7 +476,7 @@ class GuessGameApp {
       if (this.completedCardDesc) {
         const catName = this.currentCategoryKey === 'custom'
           ? this.customPlaylistTitle
-          : SONG_CATEGORIES[this.currentCategoryKey]?.name;
+          : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
         this.completedCardDesc.textContent = `恭喜！你已經成功猜中「${catName}」中全部 ${this.songs.length} 首歌曲！`;
       }
     }
@@ -427,13 +490,14 @@ class GuessGameApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  selectCategory(categoryKey) {
+  async selectCategory(categoryKey) {
     this.currentCategoryKey = categoryKey;
+    this.categoryBtns = document.querySelectorAll('.cat-btn');
     this.categoryBtns.forEach(btn => {
       if (btn.dataset.category === categoryKey) {
-        btn.className = 'cat-btn px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-md shadow-[#EB4203]/25 whitespace-nowrap transition-all font-bold';
+        btn.className = 'cat-btn px-3 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-md shadow-[#EB4203]/25 whitespace-nowrap transition-all font-bold';
       } else {
-        btn.className = 'cat-btn px-3.5 sm:px-4 py-2 rounded-xl bg-slate-800/90 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition-all font-bold';
+        btn.className = 'cat-btn px-3 sm:px-3.5 py-2 rounded-xl bg-slate-800/90 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition-all font-bold';
       }
     });
 
@@ -445,7 +509,23 @@ class GuessGameApp {
       }
       this.songs = [...this.customSongs];
     } else {
-      this.songs = [...SONG_CATEGORIES[categoryKey].songs];
+      // Default playlist: dynamically fetched from YouTube Music
+      if (!this.defaultSongs || this.defaultSongs.length === 0) {
+        this.setAudioStatus('buffering', '正在動態載入預設歌單...');
+        try {
+          const data = await fetchPlaylistSongs(DEFAULT_PLAYLIST_ID);
+          if (data && data.songs && data.songs.length > 0) {
+            this.defaultSongs = data.songs;
+          } else {
+            throw new Error('無法取得歌單曲目');
+          }
+        } catch (err) {
+          console.error('Failed to load default playlist:', err);
+          alert(`⚠️ 載入預設歌單失敗：${err.message}\n請檢查網路連線或稍後重試。`);
+          return;
+        }
+      }
+      this.songs = [...this.defaultSongs];
     }
 
     this.loadOffsetsForCurrentCategory();
@@ -476,6 +556,9 @@ class GuessGameApp {
       this.searchContainer.classList.remove('hidden');
       this.searchInput.focus();
     }
+
+    this.updateTierUI();
+    if (window.lucide) window.lucide.createIcons();
   }
 
   setDifficulty(diff) {
@@ -529,6 +612,9 @@ class GuessGameApp {
   }
 
   startNewRound() {
+    if (window.confetti && typeof window.confetti.reset === 'function') {
+      window.confetti.reset();
+    }
     this.isRoundOver = false;
     this.tierIndex = 0;
     this.isPlaying = false;
@@ -745,9 +831,12 @@ class GuessGameApp {
   updateTierUI() {
     const tier = this.tiers[this.tierIndex];
     const isHell = this.difficulty === 'hell';
+    const earnedPoints = this.getTierPoints(this.tierIndex);
+    const modeBonusText = this.gameMode === 'search' ? ' · 盲打1.5x' : '';
+
     this.tierLabel.innerHTML = `
       <span class="${isHell ? 'text-[#FF9C5F] font-black' : 'text-[#00CEC8] font-bold'}">${tier.label}</span>
-      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-2">(+${tier.points} 分)</span>
+      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-2">(+${earnedPoints} 分${modeBonusText})</span>
     `;
 
     this.tierBars.forEach((bar, idx) => {
@@ -803,7 +892,7 @@ class GuessGameApp {
     this.isPlaying = false;
     this.audioEngine.clearPlaybackTimer();
     const tier = this.tiers[this.tierIndex];
-    const earnedPoints = tier.points;
+    const earnedPoints = this.getTierPoints(this.tierIndex);
 
     // Record this song as completed for current playlist (no duplicates!)
     this.completedSongIds.add(this.currentSong.id);
@@ -819,7 +908,16 @@ class GuessGameApp {
     this.updateStatsUI();
     this.triggerConfetti();
 
-    this.showReveal(true, earnedPoints, tier.badge);
+    let badgeText = tier.badge || '太神了！';
+    if (this.gameMode === 'search') {
+      if (this.difficulty === 'hell' && this.tierIndex === 0) {
+        badgeText = '👑 傳奇聽力！極限盲打 (挑戰 200 × 盲打 1.5x)';
+      } else {
+        badgeText = `✍️ 盲打神人！(${tier.points} × 1.5x)`;
+      }
+    }
+
+    this.showReveal(true, earnedPoints, badgeText);
     this.audioEngine.playFull(this.currentSong.start || 0);
   }
 
@@ -893,8 +991,11 @@ class GuessGameApp {
   triggerConfetti() {
     if (window.confetti) {
       window.confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 28,
+        spread: 45,
+        ticks: 35,       // Ultra-fast duration (~0.5s instead of 3-4s)
+        gravity: 2.2,     // Falls quickly so it clears view immediately
+        decay: 0.88,      // Fades out fast
         origin: { y: 0.6 }
       });
     }
@@ -913,12 +1014,25 @@ class GuessGameApp {
       ? `${(currentTier.duration / 1000).toFixed(1)}s`
       : `${currentTier.duration}ms`;
 
-    const titlePrefix = this.difficulty === 'hell'
-      ? `🔥【進階】0.15 秒猜歌挑戰！\n`
-      : `0.5 秒猜歌挑戰！\n`;
+    const modeLabel = this.gameMode === 'search' ? '✍️ 輸入歌名 (1.5x加成)' : '🎯 選擇題';
+    const diffLabel = this.difficulty === 'hell' ? '🔥 挑戰模式 (0.15s極限)' : '一般模式';
+
+    let titlePrefix = '0.5 秒猜歌挑戰！\n';
+    if (this.difficulty === 'hell' && this.gameMode === 'search') {
+      titlePrefix = '👑【神人極限盲打】0.15 秒猜歌秒殺！\n';
+    } else if (this.difficulty === 'hell') {
+      titlePrefix = '🔥【進階】0.15 秒猜歌挑戰！\n';
+    } else if (this.gameMode === 'search') {
+      titlePrefix = '✍️【盲打專屬】聽前奏猜歌挑戰！\n';
+    }
+
+    const catName = this.currentCategoryKey === 'custom'
+      ? this.customPlaylistTitle
+      : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
 
     const shareText = `${titlePrefix}` +
-      `關卡：${this.currentCategoryKey === 'custom' ? this.customPlaylistTitle : SONG_CATEGORIES[this.currentCategoryKey]?.name}\n` +
+      `關卡：${catName}\n` +
+      `模式：${diffLabel} · ${modeLabel}\n` +
       `歌曲：${this.currentSong.title}\n` +
       `成績：${tierBlocks.join('')} (${durationLabel} 解鎖)\n` +
       `目前連勝：${this.streak} | 總分：${this.score}\n` +
@@ -948,7 +1062,11 @@ class GuessGameApp {
     const inputVal = this.playlistUrlInput.value.trim();
     if (!inputVal) return;
 
-    const playlistId = extractPlaylistId(inputVal);
+    // Auto-clean mobile tracking parameters (&si=..., &feature=..., etc.)
+    const cleanUrl = cleanPlaylistUrl(inputVal);
+    this.playlistUrlInput.value = cleanUrl;
+
+    const playlistId = extractPlaylistId(cleanUrl);
     if (!playlistId) {
       alert('請輸入有效的 YouTube Music 或 YouTube 播放清單網址！\n例如：https://music.youtube.com/playlist?list=PL...');
       return;
@@ -984,12 +1102,7 @@ class GuessGameApp {
 
       this.playlistUrlInput.value = '';
       this.renderCustomSongsList();
-
-      // Update custom nav button text
-      const customCatBtn = document.querySelector('[data-category="custom"]');
-      if (customCatBtn) {
-        customCatBtn.textContent = `🎯 ${this.customPlaylistTitle.slice(0, 8)}...`;
-      }
+      this.updateCustomNavVisibility();
 
       if (autoStart) {
         this.selectCategory('custom');
@@ -1013,7 +1126,11 @@ class GuessGameApp {
     const startSec = parseInt(this.customStartOffset?.value || '0', 10);
     if (!url) return;
 
-    const videoId = extractVideoId(url);
+    // Auto-clean mobile tracking parameters
+    const cleanUrl = cleanVideoUrl(url);
+    this.customUrlInput.value = cleanUrl;
+
+    const videoId = extractVideoId(cleanUrl);
     if (!videoId) {
       alert('請輸入正確的 YouTube Music 或 YouTube 影片網址！\n例如：https://music.youtube.com/watch?v=xxx');
       return;
@@ -1036,11 +1153,19 @@ class GuessGameApp {
     this.btnAddCustom.disabled = false;
     this.btnAddCustom.textContent = '+ 單曲';
     this.renderCustomSongsList();
+    this.updateCustomNavVisibility();
   }
 
   shareCustomChallenge() {
     let challengeUrl = window.location.origin + window.location.pathname;
-    if (this.customPlaylistId) {
+    if (this.customSongs && this.customSongs.length > 0) {
+      const payload = encodeSongsPayload(this.customSongs, this.customPlaylistTitle);
+      if (this.customPlaylistId) {
+        challengeUrl += `?list=${encodeURIComponent(this.customPlaylistId)}&songs=${payload}`;
+      } else {
+        challengeUrl += `?cat=custom&songs=${payload}`;
+      }
+    } else if (this.customPlaylistId) {
       challengeUrl += `?list=${encodeURIComponent(this.customPlaylistId)}`;
     }
 
@@ -1051,7 +1176,7 @@ class GuessGameApp {
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText).then(() => {
-        alert('✨ 專屬歌單考題連結已複製至剪貼簿！');
+        alert('✨ 專屬歌單考題連結已複製至剪貼簿（已內嵌繁中歌名，跨平台即刻暢玩）！');
       });
     } else {
       alert(shareText);
@@ -1069,8 +1194,10 @@ class GuessGameApp {
     localStorage.removeItem('yt_guesser_custom_playlist_id');
     localStorage.removeItem('yt_guesser_custom_playlist_title');
     this.renderCustomSongsList();
-    const customCatBtn = document.querySelector('[data-category="custom"]');
-    if (customCatBtn) customCatBtn.textContent = '🎯 自訂題庫';
+    this.updateCustomNavVisibility();
+    if (this.currentCategoryKey === 'custom') {
+      this.selectCategory('default');
+    }
   }
 
   renderCustomSongsList() {

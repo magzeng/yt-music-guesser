@@ -104,7 +104,7 @@
             </button>
             <button data-mode="search"
               class="mode-toggle-btn px-2.5 py-1 rounded-lg text-slate-400 font-medium hover:text-white transition-colors">
-              輸入歌名
+              輸入歌名 <span class="text-[#00CEC8] font-bold text-[10px] ml-0.5">+50%</span>
             </button>
           </div>
 
@@ -116,7 +116,7 @@
             </button>
             <button data-diff="hell"
               class="diff-toggle-btn px-2.5 py-1 rounded-lg text-slate-400 font-bold hover:text-[#FF9C5F] transition-all flex items-center">
-              挑戰
+              🔥 挑戰 <span class="text-[#FF9C5F] font-bold text-[10px] ml-0.5">2x</span>
             </button>
           </div>
 
@@ -163,7 +163,7 @@
           </button>
           <button data-mode="search"
             class="mode-toggle-btn flex-1 py-1 rounded-md text-slate-400 font-medium hover:text-white text-center transition-colors">
-            搜尋輸入
+            輸入歌名 <span class="text-[#00CEC8] font-bold text-[10px]">+50%</span>
           </button>
         </div>
 
@@ -174,8 +174,8 @@
             一般
           </button>
           <button data-diff="hell"
-            class="diff-toggle-btn flex-1 py-1 rounded-md text-slate-400 font-bold text-center transition-all">
-            挑戰
+            class="diff-toggle-btn flex-1 py-1 rounded-md text-slate-400 font-bold hover:text-[#FF9C5F] text-center transition-all">
+            🔥 挑戰 <span class="text-[#FF9C5F] font-bold text-[10px]">2x</span>
           </button>
         </div>
       </div>
@@ -185,6 +185,14 @@
   <!-- Category Nav Chips -->
   <nav class="max-w-4xl mx-auto w-full px-3.5 sm:px-4 pt-3 pb-2">
     <div class="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
+      <button data-category="default"
+        class="cat-btn px-3 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-md shadow-[#EB4203]/25 whitespace-nowrap transition-all font-bold flex items-center">
+        <i data-lucide="flame" class="w-3.5 h-3.5 mr-1 text-[#FCEFC3]"></i> 你的歌來了 (預設)
+      </button>
+      <button data-category="custom"
+        class="cat-btn hidden px-3 sm:px-3.5 py-2 rounded-xl bg-slate-800/90 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition-all font-bold flex items-center">
+        <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 自訂題庫
+      </button>
       <button id="btn-open-custom"
         class="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-white whitespace-nowrap transition-all flex items-center">
         <i data-lucide="plus" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 匯入/管理
@@ -385,6 +393,14 @@
 
     <!-- Guessing Stage: Search Input Mode -->
     <div id="search-container" class="hidden relative max-w-xl mx-auto w-full mb-4 sm:mb-6">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <span class="text-[11px] text-slate-400 font-medium flex items-center">
+          <i data-lucide="keyboard" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 盲打輸入模式
+        </span>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#00CEC8]/15 text-[#00CEC8] border border-[#00CEC8]/30">
+          ✍️ 盲打獎勵：得分 × 1.5 倍
+        </span>
+      </div>
       <div class="relative">
         <i data-lucide="search"
           class="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>

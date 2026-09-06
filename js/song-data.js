@@ -1,45 +1,104 @@
-// Song Database and Playlist Helper
+// Song Database and Playlist Helper (Dynamic Fetching Architecture)
+export const DEFAULT_PLAYLIST_ID = 'PLSFoGAp7QeTQ';
+export const DEFAULT_PLAYLIST_TITLE = '你的歌來了';
+
+// Cloudflare Worker Proxy for YouTube Music Traditional Chinese (zh-TW) resolving
+export const WORKER_PROXY_URL = 'https://worker-music-guesser.mag5323.workers.dev';
+
 export const SONG_CATEGORIES = {
-  tanya: {
-    id: 'tanya',
-    name: '🎸 蔡健雅 寫給別人的歌',
-    playlistId: 'PLdIOdhH7DBVw',
-    icon: 'music',
-    description: '蔡健雅詞曲創作的華語金曲，寫給其他歌手的經典之作',
-    songs: [
-      { id: 'vg2pgKLBYo4', title: '我不會飛', artist: '張玉華', start: 0 },
-      { id: 'n_rJQv5d3yk', title: '保管', artist: '阿桑', start: 0 },
-      { id: 'lbYsvfOYMA4', title: 'Miss You Forever', artist: '蕭敬騰', start: 0 },
-      { id: '78SESO0YWaU', title: 'Beautiful', artist: '梁靜茹', start: 0 },
-      { id: 'bsNO_azAxyk', title: '做自己', artist: '同恩', start: 0 },
-      { id: 'HNpxmaBRvuY', title: '幸福的預感', artist: '梁靜茹', start: 0 },
-      { id: 'MyOqkT-tbCg', title: '對愛渴望', artist: '楊宗緯', start: 0 },
-      { id: '44ZEvw3QBpc', title: '多少', artist: '陳奕迅', start: 0 },
-      { id: 'eHnTKwdRFGE', title: '踮起腳尖愛', artist: '洪佩瑜', start: 0 },
-      { id: 'B4_yPhpC6s8', title: '無慣例的早晨', artist: '洪佩瑜', start: 0 },
-      { id: 'gZ9za2AtUdQ', title: '重來', artist: '黃小琥', start: 0 }
-    ]
-  },
-  acoustic: {
-    id: 'acoustic',
-    name: '☕ Acoustic x 梁靜茹',
-    playlistId: 'PLbbjStBjGd-Q',
-    icon: 'headphones',
-    description: '純粹溫暖的木吉他與不插電編曲，靜茹治癒系代表作',
-    songs: [
-      { id: 'wifGxo6zNrE', title: '閃亮的星', artist: '梁靜茹', start: 0 },
-      { id: '78SESO0YWaU', title: 'Beautiful', artist: '梁靜茹', start: 0 },
-      { id: 'nxZH4oQTumY', title: '序', artist: '梁靜茹', start: 0 },
-      { id: 'nTiyzT1ZzE4', title: '半個月亮', artist: '梁靜茹', start: 0 },
-      { id: 'HNpxmaBRvuY', title: '幸福的預感', artist: '梁靜茹', start: 0 },
-      { id: 'G-ktSFk6-mM', title: 'Tiffany', artist: '梁靜茹', start: 0 },
-      { id: 'aYfftI2XGdw', title: '四季', artist: '梁靜茹', start: 0 },
-      { id: 'DNOsKKBZbdM', title: '飛魚', artist: '梁靜茹', start: 0 },
-      { id: 'Dj5EbFcdlO4', title: '三吋日光', artist: '梁靜茹', start: 0 },
-      { id: 'BxyUsIb3HAc', title: '愛情之所以為愛情', artist: '梁靜茹', start: 0 }
-    ]
+  default: {
+    id: 'default',
+    name: '🔥 你的歌來了',
+    playlistId: DEFAULT_PLAYLIST_ID,
+    icon: 'flame',
+    description: '熱門華語經典金曲，YouTube Music 官方正版音檔'
   }
 };
+
+/**
+ * Clean playlist URL: strips tracking parameters like &si=..., &feature=..., etc.
+ */
+export function cleanPlaylistUrl(urlOrId) {
+  if (!urlOrId) return '';
+  const str = urlOrId.trim();
+  const playlistId = extractPlaylistId(str);
+  if (!playlistId) return str;
+  if (str.includes('music.youtube.com')) {
+    return `https://music.youtube.com/playlist?list=${playlistId}`;
+  }
+  return `https://www.youtube.com/playlist?list=${playlistId}`;
+}
+
+/**
+ * Clean video URL: strips tracking parameters like &si=..., &feature=..., etc.
+ */
+export function cleanVideoUrl(urlOrId) {
+  if (!urlOrId) return '';
+  const str = urlOrId.trim();
+  const videoId = extractVideoId(str);
+  if (!videoId) return str;
+  if (str.includes('music.youtube.com')) {
+    return `https://music.youtube.com/watch?v=${videoId}`;
+  }
+  return `https://www.youtube.com/watch?v=${videoId}`;
+}
+
+/**
+ * Encodes custom songs with Chinese metadata into a URL-friendly compact string.
+ * Format: title;id:title:artist:start;id:title:artist:start...
+ */
+export function encodeSongsPayload(songs, title = '') {
+  if (!Array.isArray(songs) || songs.length === 0) return '';
+  const sanitizedTitle = (title || '自訂題庫').replace(/[;:|]/g, ' ');
+  const parts = songs.map(s => {
+    const id = s.id || '';
+    const sTitle = (s.title || '').replace(/[;:|]/g, ' ');
+    const sArtist = (s.artist || '').replace(/[;:|]/g, ' ');
+    const start = s.start || 0;
+    return `${id}:${sTitle}:${sArtist}:${start}`;
+  });
+  return encodeURIComponent(`${sanitizedTitle};${parts.join(';')}`);
+}
+
+/**
+ * Decodes custom songs payload from URL string.
+ */
+export function decodeSongsPayload(payloadStr) {
+  if (!payloadStr) return null;
+  try {
+    const raw = decodeURIComponent(payloadStr);
+    const segments = raw.split(';');
+    if (segments.length === 0) return null;
+
+    let title = '匯入題庫';
+    let songParts = segments;
+
+    if (!segments[0].includes(':')) {
+      title = segments[0] || '匯入題庫';
+      songParts = segments.slice(1);
+    }
+
+    const songs = [];
+    for (const p of songParts) {
+      const bits = p.split(':');
+      if (bits.length >= 3 && bits[0]) {
+        songs.push({
+          id: bits[0].trim(),
+          title: bits[1].trim() || '未知曲目',
+          artist: bits[2].trim() || 'YouTube Music',
+          start: parseFloat(bits[3]) || 0
+        });
+      }
+    }
+
+    if (songs.length > 0) {
+      return { title, songs };
+    }
+  } catch (e) {
+    console.warn('Failed to decode songs payload:', e);
+  }
+  return null;
+}
 
 /**
  * Parses offset query param string (e.g. "vg2pgKLBYo4:3,n_rJQv5d3yk:4.5")
@@ -87,27 +146,29 @@ export function applyOffsetsToSongs(songs, offsetMap) {
 }
 
 /**
- * Extracts YouTube Playlist ID from URL or raw ID string.
+ * Extracts YouTube Playlist ID from URL or raw ID string, stripping tracking params like &si=...
  */
 export function extractPlaylistId(urlOrId) {
   if (!urlOrId) return null;
   const str = urlOrId.trim();
 
+  // Match list query parameter
   const match = str.match(/[?&]list=([a-zA-Z0-9_-]+)/i);
   if (match && match[1]) {
     return match[1];
   }
 
-  // Raw playlist ID pattern
-  if (/^(?:PL|RD|OLAK5uy_)[a-zA-Z0-9_-]+$/i.test(str)) {
-    return str;
+  // Strip anything after & or ? or # if someone pasted raw ID with params
+  const cleanId = str.split(/[?&#]/)[0].trim();
+  if (/^(?:PL|RD|OLAK5uy_|VL)[a-zA-Z0-9_-]+$/i.test(cleanId)) {
+    return cleanId;
   }
 
   return null;
 }
 
 /**
- * Extracts YouTube / YouTube Music video ID from URL or raw ID string.
+ * Extracts YouTube / YouTube Music video ID from URL or raw ID string, stripping tracking params.
  */
 export function extractVideoId(urlOrId) {
   if (!urlOrId) return null;
@@ -118,8 +179,9 @@ export function extractVideoId(urlOrId) {
     return matchWatch[1];
   }
 
-  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) {
-    return str;
+  const cleanId = str.split(/[?&#]/)[0].trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(cleanId)) {
+    return cleanId;
   }
   return null;
 }
@@ -165,22 +227,11 @@ const INVIDIOUS_INSTANCES = [
  * Defaults to Traditional Chinese (zh-TW) when available.
  */
 export async function fetchPlaylistSongs(playlistId) {
-  // 1. Check if it's one of the built-in preset playlists first (instant load)
-  for (const key of Object.keys(SONG_CATEGORIES)) {
-    if (SONG_CATEGORIES[key].playlistId === playlistId) {
-      return {
-        success: true,
-        title: SONG_CATEGORIES[key].name,
-        playlist_id: playlistId,
-        count: SONG_CATEGORIES[key].songs.length,
-        songs: SONG_CATEGORIES[key].songs
-      };
-    }
-  }
+  const cleanId = extractPlaylistId(playlistId) || playlistId;
 
-  // 2. Try local backend API with native YouTube Music Chinese resolver (serve.py)
+  // 1. Try local backend API with native YouTube Music Chinese resolver (serve.py)
   try {
-    const res = await fetch(`/api/playlist?list=${encodeURIComponent(playlistId)}&hl=zh-TW`);
+    const res = await fetch(`/api/playlist?list=${encodeURIComponent(cleanId)}&hl=zh-TW`);
     if (res.ok) {
       const data = await res.json();
       if (data.songs && data.songs.length > 0) {
@@ -192,7 +243,28 @@ export async function fetchPlaylistSongs(playlistId) {
       }
     }
   } catch (err) {
-    // Local API not running, proceed to serverless client-side fetchers
+    // Local API not running, proceed to cloud edge worker or mirror fetchers
+  }
+
+  // 2. Try configured Cloudflare Worker Proxy (for GitHub Pages serverless deployment)
+  const workerProxy = WORKER_PROXY_URL || localStorage.getItem('yt_guesser_worker_proxy') || window.YTM_WORKER_PROXY;
+  if (workerProxy) {
+    try {
+      const proxyUrl = `${workerProxy.replace(/\/$/, '')}/?list=${encodeURIComponent(cleanId)}`;
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.songs && data.songs.length > 0) {
+          data.songs = data.songs.map(s => ({
+            ...s,
+            artist: (s.artist || '').replace(/ - Topic$/i, '')
+          }));
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn('Worker proxy fetch failed:', err);
+    }
   }
 
   // 3. Client-Side Serverless Fetcher: Query Invidious API mirrors with zh-TW
