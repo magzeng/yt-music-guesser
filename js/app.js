@@ -39,7 +39,7 @@ export function trackEvent(eventName, params = {}) {
       window.gtag('event', eventName, params);
     }
   } catch (err) {
-    console.warn('GA4 tracking error:', err);
+    // Silently handle any adblocker or tracking errors to never interrupt gameplay
   }
 }
 
@@ -570,6 +570,18 @@ class GuessGameApp {
     this.updateLivesUI();
     if (this.playlistCompletedCard) this.playlistCompletedCard.classList.add('hidden');
     if (this.gameCentralStage) this.gameCentralStage.classList.remove('hidden');
+
+    const catName = categoryKey === 'custom'
+      ? this.customPlaylistTitle
+      : (SONG_CATEGORIES[categoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
+
+    // GA4 Track Event: category_selected
+    trackEvent('category_selected', {
+      category_key: categoryKey,
+      playlist_title: catName,
+      playlist_id: this.customPlaylistId || DEFAULT_PLAYLIST_ID,
+      song_count: this.songs.length
+    });
 
     this.startNewRound();
   }
@@ -1427,7 +1439,7 @@ class GuessGameApp {
 
   async generateAndShareScorecardImage() {
     if (!this.runHistory || this.runHistory.length === 0) {
-      alert('目前尚無戰績紀錄');
+      alert('目前尚無成績');
       return;
     }
 
@@ -1529,7 +1541,7 @@ class GuessGameApp {
     // Subtitle
     ctx.font = '12px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('全曲庫逐首挑戰戰績看板', width / 2, 110);
+    ctx.fillText('成績總覽', width / 2, 110);
 
     // 4. Rank & Score Box
     const boxX = 36;
@@ -1697,7 +1709,7 @@ class GuessGameApp {
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          alert('✨ 戰績圖片已複製到剪貼簿！可直接貼在聊天軟體或社群發文！');
+          alert('✨ 戰績圖已複製到剪貼簿！可直接貼在聊天軟體或社群發文！');
           return;
         } catch (err) {
           console.warn('Clipboard write failed, triggering download', err);
@@ -1712,7 +1724,7 @@ class GuessGameApp {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      alert('✨ 戰績圖片已下載！');
+      alert('✨ 戰績圖已下載');
     }, 'image/png');
   }
 
