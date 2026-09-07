@@ -32,6 +32,17 @@ export const DIFFICULTY_TIERS = {
   ]
 };
 
+// GA4 Custom Event Tracking Helper (Safely logs gameplay and UGC intelligence)
+export function trackEvent(eventName, params = {}) {
+  try {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', eventName, params);
+    }
+  } catch (err) {
+    console.warn('GA4 tracking error:', err);
+  }
+}
+
 class GuessGameApp {
   constructor() {
     this.audioEngine = new YouTubeAudioEngine('yt-player-target', '_GiJ2bLLGLk');
@@ -133,6 +144,7 @@ class GuessGameApp {
     this.scorecardGodlyCount = document.getElementById('scorecard-godly-count');
     this.scorecardTrackCount = document.getElementById('scorecard-track-count');
     this.scorecardTrackList = document.getElementById('scorecard-track-list');
+    this.btnSaveScorecardImg = document.getElementById('btn-save-scorecard-img');
     this.btnCopyScorecard = document.getElementById('btn-copy-scorecard');
     this.btnReplayPlaylist = document.getElementById('btn-replay-playlist');
     this.gameCentralStage = document.getElementById('btn-play-snippet')?.closest('.glass-panel');
@@ -209,6 +221,9 @@ class GuessGameApp {
     }
     if (this.btnReplayPlaylist) {
       this.btnReplayPlaylist.addEventListener('click', () => this.resetCurrentPlaylistProgress());
+    }
+    if (this.btnSaveScorecardImg) {
+      this.btnSaveScorecardImg.addEventListener('click', () => this.generateAndShareScorecardImage());
     }
     if (this.btnCopyScorecard) {
       this.btnCopyScorecard.addEventListener('click', () => this.copyScorecardSummary());
@@ -414,6 +429,16 @@ class GuessGameApp {
     } catch (e) { }
     savedOffsets[this.currentSong.id] = sec;
     localStorage.setItem(this.getOffsetsStorageKey(), JSON.stringify(savedOffsets));
+
+    // GA4 Track Event: Community Offset Intelligence
+    trackEvent('song_offset_saved', {
+      video_id: this.currentSong.id,
+      song_title: this.currentSong.title,
+      song_artist: this.currentSong.artist,
+      offset_seconds: sec,
+      playlist_id: this.customPlaylistId || DEFAULT_PLAYLIST_ID,
+      category: this.currentCategoryKey
+    });
 
     alert(`✅ 已將「${this.currentSong.title}」設定為從第 ${sec} 秒開始發聲`);
   }
@@ -852,11 +877,12 @@ class GuessGameApp {
     const tier = this.tiers[this.tierIndex];
     const isHell = this.difficulty === 'hell';
     const earnedPoints = this.getTierPoints(this.tierIndex);
-    const modeBonusText = this.gameMode === 'search' ? ' · 盲猜1.5x' : '';
+    const modeBonusText = this.gameMode === 'search' ? ' · 1.5x' : '';
 
     this.tierLabel.innerHTML = `
+      <span class="text-slate-400 mr-1 text-[11px]">⏱️</span>
       <span class="${isHell ? 'text-[#FF9C5F] font-black' : 'text-[#00CEC8] font-bold'}">${tier.label}</span>
-      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-2">(+${earnedPoints} 分${modeBonusText})</span>
+      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-1.5">(+${earnedPoints}分${modeBonusText})</span>
     `;
 
     this.tierBars.forEach((bar, idx) => {
@@ -935,6 +961,18 @@ class GuessGameApp {
       mode: this.gameMode
     });
 
+    // GA4 Track Event: round_guess
+    trackEvent('round_guess', {
+      result: 'correct',
+      song_id: this.currentSong.id,
+      song_title: this.currentSong.title,
+      tier_duration: tier.duration,
+      points: earnedPoints,
+      mode: this.gameMode,
+      difficulty: this.difficulty,
+      streak: this.streak
+    });
+
     this.updateStatsUI();
     this.updateProgressUI();
     this.triggerConfetti();
@@ -990,6 +1028,18 @@ class GuessGameApp {
       guessedTitle: guessedSong ? guessedSong.title : null
     });
 
+    // GA4 Track Event: round_guess
+    trackEvent('round_guess', {
+      result: 'wrong',
+      song_id: this.currentSong.id,
+      song_title: this.currentSong.title,
+      tier_duration: tier.duration,
+      points: 0,
+      mode: this.gameMode,
+      difficulty: this.difficulty,
+      remaining_lives: this.lives
+    });
+
     // Lock all choice buttons and highlight the correct one in teal
     this.choicesGrid.classList.add('pointer-events-none');
     this.choicesGrid.querySelectorAll('.choice-btn').forEach(btn => {
@@ -1043,6 +1093,18 @@ class GuessGameApp {
       durationLabel: durationLabel,
       points: 0,
       mode: this.gameMode
+    });
+
+    // GA4 Track Event: round_guess
+    trackEvent('round_guess', {
+      result: 'giveup',
+      song_id: this.currentSong.id,
+      song_title: this.currentSong.title,
+      tier_duration: tier.duration,
+      points: 0,
+      mode: this.gameMode,
+      difficulty: this.difficulty,
+      remaining_lives: this.lives
     });
 
     // Lock all choice buttons and highlight the correct one in teal
@@ -1219,6 +1281,23 @@ class GuessGameApp {
       this.triggerConfetti();
     }
     if (window.lucide) window.lucide.createIcons();
+
+    // GA4 Track Event: game_summary
+    trackEvent('game_summary', {
+      is_victory: isVictory,
+      playlist_title: catName,
+      playlist_id: this.customPlaylistId || this.currentCategoryKey,
+      rank_letter: rankInfo.letter,
+      rank_title: rankInfo.title,
+      total_score: this.score,
+      remaining_lives: this.lives,
+      correct_count: correctCount,
+      total_attempted: totalAttempted,
+      accuracy_percent: accPct,
+      godly_count: godlyCount,
+      difficulty: this.difficulty,
+      mode: this.gameMode
+    });
   }
 
   calculateRank(isVictory, correctCount, totalAttempted, godlyCount) {
@@ -1320,9 +1399,20 @@ class GuessGameApp {
     }
 
     shareLines.push(``);
-    shareLines.push(`🔗 來聽聽看你能猜出幾首：https://mag5323.github.io/yt-music-guesser/`);
+    shareLines.push(`🔗 來聽聽看你能猜出幾首：https://magzeng.github.io/yt-music-guesser/`);
 
     const fullShareText = shareLines.join('\n');
+
+    // GA4 Track Event: scorecard_shared (text)
+    trackEvent('scorecard_shared', {
+      share_type: 'text',
+      playlist_title: catName,
+      playlist_id: this.customPlaylistId || this.currentCategoryKey,
+      rank_letter: rankInfo.letter,
+      total_score: this.score,
+      is_victory: isVictory,
+      remaining_lives: this.lives
+    });
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(fullShareText).then(() => {
@@ -1333,6 +1423,297 @@ class GuessGameApp {
     } else {
       alert(fullShareText);
     }
+  }
+
+  async generateAndShareScorecardImage() {
+    if (!this.runHistory || this.runHistory.length === 0) {
+      alert('目前尚無戰績紀錄');
+      return;
+    }
+
+    const catName = this.currentCategoryKey === 'custom'
+      ? this.customPlaylistTitle
+      : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
+
+    const isVictory = this.lives > 0 && this.completedSongIds.size === this.songs.length;
+    const totalAttempted = this.runHistory.length;
+    const correctCount = this.runHistory.filter(h => h.result === 'correct').length;
+    const godlyCount = this.runHistory.filter(h => h.result === 'correct' && h.tierIndex === 0).length;
+    const rankInfo = this.calculateRank(isVictory, correctCount, totalAttempted, godlyCount);
+
+    let hearts = '';
+    for (let i = 0; i < this.maxLives; i++) {
+      hearts += (i < this.lives) ? '❤️' : '🖤';
+    }
+
+    const fastLabel = this.difficulty === 'hell' ? '0.15s' : '0.5s';
+    const tracksToShow = this.runHistory.slice(0, 12);
+
+    // Canvas size
+    const width = 680;
+    const trackRowHeight = 44;
+    const baseHeight = 340;
+    const height = baseHeight + (tracksToShow.length * trackRowHeight);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    // 1. Dark Background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+    bgGrad.addColorStop(0, '#0a0f1d');
+    bgGrad.addColorStop(1, '#05070c');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Corner Glows
+    const glow1 = ctx.createRadialGradient(width - 50, 60, 10, width - 50, 60, 260);
+    glow1.addColorStop(0, 'rgba(0, 206, 200, 0.22)');
+    glow1.addColorStop(1, 'rgba(0, 206, 200, 0)');
+    ctx.fillStyle = glow1;
+    ctx.fillRect(0, 0, width, height);
+
+    const glow2 = ctx.createRadialGradient(60, 120, 10, 60, 120, 240);
+    glow2.addColorStop(0, 'rgba(235, 66, 3, 0.18)');
+    glow2.addColorStop(1, 'rgba(235, 66, 3, 0)');
+    ctx.fillStyle = glow2;
+    ctx.fillRect(0, 0, width, height);
+
+    // Outer Border
+    ctx.strokeStyle = 'rgba(252, 239, 195, 0.12)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(12, 12, width - 24, height - 24);
+
+    // Helper for rounded rect
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    // 2. Status Badge Pill
+    const badgeText = isVictory ? '🏆 挑戰成功！' : '💀 挑戰結束';
+    ctx.font = 'bold 12px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
+    const badgeMetrics = ctx.measureText(badgeText);
+    const badgeWidth = badgeMetrics.width + 24;
+    const badgeX = (width - badgeWidth) / 2;
+    const badgeY = 32;
+
+    roundRect(badgeX, badgeY, badgeWidth, 26, 13);
+    ctx.fillStyle = isVictory ? 'rgba(0, 206, 200, 0.15)' : 'rgba(235, 66, 3, 0.2)';
+    ctx.fill();
+    ctx.strokeStyle = isVictory ? 'rgba(0, 206, 200, 0.4)' : 'rgba(235, 66, 3, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = isVictory ? '#00CEC8' : '#FF9C5F';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(badgeText, width / 2, badgeY + 13);
+
+    // 3. Playlist Title
+    ctx.font = '900 24px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#FCEFC3';
+    ctx.fillText(catName, width / 2, 84);
+
+    // Subtitle
+    ctx.font = '12px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('全曲庫逐首挑戰戰績看板', width / 2, 110);
+
+    // 4. Rank & Score Box
+    const boxX = 36;
+    const boxY = 130;
+    const boxW = width - 72;
+    const boxH = 96;
+
+    roundRect(boxX, boxY, boxW, boxH, 16);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Rank Badge
+    roundRect(boxX + 16, boxY + 14, 68, 68, 14);
+    const rankGrad = ctx.createLinearGradient(boxX + 16, boxY + 14, boxX + 84, boxY + 82);
+    if (rankInfo.letter === 'SSS') {
+      rankGrad.addColorStop(0, '#00CEC8');
+      rankGrad.addColorStop(1, '#FCEFC3');
+    } else if (rankInfo.letter === 'SS') {
+      rankGrad.addColorStop(0, '#EB4203');
+      rankGrad.addColorStop(1, '#FF9C5F');
+    } else if (rankInfo.letter === 'S') {
+      rankGrad.addColorStop(0, '#f59e0b');
+      rankGrad.addColorStop(1, '#fde047');
+    } else {
+      rankGrad.addColorStop(0, '#334155');
+      rankGrad.addColorStop(1, '#64748b');
+    }
+    ctx.fillStyle = rankGrad;
+    ctx.fill();
+
+    // Rank Text
+    ctx.fillStyle = (rankInfo.letter === 'SSS' || rankInfo.letter === 'S') ? '#090e18' : '#FCEFC3';
+    ctx.font = '900 26px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(rankInfo.letter, boxX + 50, boxY + 44);
+    ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+    ctx.fillText(rankInfo.title, boxX + 50, boxY + 66);
+
+    // Score & Hearts
+    ctx.textAlign = 'left';
+    ctx.font = '11px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('總得分', boxX + 100, boxY + 32);
+
+    ctx.font = '900 30px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#00CEC8';
+    ctx.fillText(this.score.toString(), boxX + 100, boxY + 60);
+
+    ctx.font = '13px sans-serif';
+    ctx.fillText(hearts, boxX + 100, boxY + 82);
+
+    // Accuracy & Godly stats (right side)
+    const accPct = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
+    ctx.textAlign = 'right';
+    ctx.font = '10px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('答對率', boxX + boxW - 18, boxY + 32);
+    ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#FCEFC3';
+    ctx.fillText(`${correctCount} / ${totalAttempted} (${accPct}%)`, boxX + boxW - 18, boxY + 48);
+
+    ctx.font = '10px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`秒答 (${fastLabel})`, boxX + boxW - 18, boxY + 68);
+    ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#FF9C5F';
+    ctx.fillText(`${godlyCount} 首`, boxX + boxW - 18, boxY + 84);
+
+    // 5. Track List Header
+    const listStartY = boxY + boxH + 20;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 12px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`逐首答題明細 (${totalAttempted} 首)`, boxX + 2, listStartY);
+
+    ctx.textAlign = 'right';
+    ctx.font = '10px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('結果 · 秒數 · 得分', boxX + boxW - 2, listStartY);
+
+    // 6. Track Rows
+    tracksToShow.forEach((item, idx) => {
+      const rowY = listStartY + 10 + (idx * trackRowHeight);
+      roundRect(boxX, rowY, boxW, 36, 10);
+      ctx.fillStyle = 'rgba(8, 12, 20, 0.85)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.7)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const isCorrect = item.result === 'correct';
+      const icon = isCorrect ? '✅' : '❌';
+      const pointsText = isCorrect ? `+${item.points}` : '+0';
+      const modeTag = item.mode === 'search' ? '✍️盲打' : item.durationLabel;
+
+      // Status icon & title
+      ctx.textAlign = 'left';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(icon, boxX + 10, rowY + 19);
+
+      ctx.font = 'bold 12px "Noto Sans TC", sans-serif';
+      ctx.fillStyle = '#FCEFC3';
+
+      let displayTitle = `${idx + 1}. ${item.song.title}`;
+      if (displayTitle.length > 20) displayTitle = displayTitle.slice(0, 20) + '...';
+      ctx.fillText(displayTitle, boxX + 32, rowY + 19);
+
+      // Tag & Points on right
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = isCorrect ? '#00CEC8' : '#64748b';
+      ctx.fillText(pointsText, boxX + boxW - 12, rowY + 19);
+
+      ctx.font = '10px "Noto Sans TC", sans-serif';
+      ctx.fillStyle = isCorrect ? '#00CEC8' : '#FF9C5F';
+      ctx.fillText(modeTag, boxX + boxW - 60, rowY + 19);
+    });
+
+    // 7. Footer Watermark
+    const footerY = height - 20;
+    ctx.textAlign = 'center';
+    ctx.font = '11px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('🎧 你的歌來了 · 零秒猜歌  |  magzeng.github.io/yt-music-guesser', width / 2, footerY);
+
+    // Export to Blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('產出圖片失敗，請再試一次');
+        return;
+      }
+      const fileName = `music-guesser-${Date.now()}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      // GA4 Track Event: scorecard_shared (image)
+      trackEvent('scorecard_shared', {
+        share_type: 'image',
+        playlist_title: catName,
+        playlist_id: this.customPlaylistId || this.currentCategoryKey,
+        rank_letter: rankInfo.letter,
+        total_score: this.score,
+        is_victory: isVictory,
+        remaining_lives: this.lives
+      });
+
+      // Native Web Share API (Supported on iOS Safari & Android Chrome)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `猜歌戰績：${catName}`,
+            text: `我在「${catName}」猜歌挑戰拿下 ${rankInfo.letter}【${rankInfo.title}】！`
+          });
+          return;
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error(err);
+        }
+      }
+
+      // Fallback: Clipboard write or download
+      if (navigator.clipboard && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          alert('✨ 戰績圖片已複製到剪貼簿！可直接貼在聊天軟體或社群發文！');
+          return;
+        } catch (err) {
+          console.warn('Clipboard write failed, triggering download', err);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      alert('✨ 戰績圖片已下載！');
+    }, 'image/png');
   }
 
   triggerConfetti() {
@@ -1450,6 +1831,13 @@ class GuessGameApp {
       this.playlistUrlInput.value = '';
       this.renderCustomSongsList();
       this.updateCustomNavVisibility();
+
+      // GA4 Track Event: playlist_imported (Collect high quality community playlists)
+      trackEvent('playlist_imported', {
+        playlist_id: playlistId,
+        playlist_title: this.customPlaylistTitle,
+        song_count: data.songs.length
+      });
 
       if (autoStart) {
         this.selectCategory('custom');

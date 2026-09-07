@@ -296,14 +296,21 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 relative z-10">
-        <button id="btn-copy-scorecard"
-          class="w-full py-3 rounded-xl bg-gradient-to-r from-[#00CEC8] to-[#00A8A3] hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-[#00CEC8]/25 flex items-center justify-center transition-all active:scale-95">
-          <i data-lucide="share-2" class="w-4 h-4 mr-1.5 text-slate-950"></i>
-          複製 Threads / IG 戰績
-        </button>
+      <div class="space-y-2.5 relative z-10">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button id="btn-save-scorecard-img"
+            class="w-full py-3 rounded-xl bg-gradient-to-r from-[#00CEC8] to-[#00A8A3] hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-[#00CEC8]/25 flex items-center justify-center transition-all active:scale-95">
+            <i data-lucide="camera" class="w-4 h-4 mr-1.5 text-slate-950"></i>
+            📸 儲存戰績圖片
+          </button>
+          <button id="btn-copy-scorecard"
+            class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 flex items-center justify-center transition-all active:scale-95">
+            <i data-lucide="share-2" class="w-4 h-4 mr-1.5 text-[#00CEC8]"></i>
+            複製純文字戰績
+          </button>
+        </div>
         <button id="btn-replay-playlist"
-          class="w-full py-3 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] hover:brightness-110 text-[#FCEFC3] font-black text-xs sm:text-sm shadow-lg shadow-[#EB4203]/25 flex items-center justify-center transition-all active:scale-95">
+          class="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] hover:brightness-110 text-[#FCEFC3] font-black text-xs sm:text-sm shadow-lg shadow-[#EB4203]/25 flex items-center justify-center transition-all active:scale-95">
           <i data-lucide="rotate-ccw" class="w-4 h-4 mr-1.5"></i>
           重新挑戰歌單
         </button>
@@ -360,14 +367,10 @@
         <!-- Tier Clue Bar & Stage Lives -->
         <div class="w-full max-w-xs sm:max-w-sm mb-4 sm:mb-6">
           <div class="flex items-center justify-between text-xs mb-1.5 sm:mb-2">
-            <div class="flex items-center space-x-1 text-slate-400 text-[11px] sm:text-xs">
-              <span>提示長度：</span>
-              <span id="current-tier-label" class="font-mono font-semibold text-[11px] sm:text-xs">0.5 秒</span>
+            <div id="current-tier-label" class="font-mono font-semibold text-[11px] sm:text-xs truncate mr-2">
+              0.5 秒
             </div>
-            <div class="flex items-center space-x-1 text-xs font-semibold">
-              <span class="text-slate-400 text-[11px]">生命：</span>
-              <span id="lives-display-stage" class="tracking-widest text-sm text-[#EB4203]">❤️❤️❤️</span>
-            </div>
+            <div id="lives-display-stage" class="tracking-widest text-sm text-[#EB4203] flex-shrink-0">❤️❤️❤️</div>
           </div>
           <div class="grid grid-cols-4 gap-1.5 sm:gap-2 h-2 sm:h-2.5">
             <div class="tier-bar rounded-full bg-slate-700 transition-all duration-300"></div>
@@ -468,17 +471,17 @@
     <div id="search-container" class="hidden relative max-w-xl mx-auto w-full mb-4 sm:mb-6">
       <div class="flex items-center justify-between mb-2 px-1">
         <span class="text-[11px] text-slate-400 font-medium flex items-center">
-          <i data-lucide="keyboard" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 盲打輸入模式
+          <i data-lucide="keyboard" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 輸入模式
         </span>
         <span
           class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#00CEC8]/15 text-[#00CEC8] border border-[#00CEC8]/30">
-          ✍️ 盲打獎勵：得分 × 1.5 倍
+          獎勵 1.5x
         </span>
       </div>
       <div class="relative">
         <i data-lucide="search"
           class="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-        <input type="text" id="search-input" placeholder="搜尋歌曲名稱或歌手，按 Enter 確認"
+        <input type="text" id="search-input" placeholder="搜尋歌曲或歌手，按 Enter 送出"
           class="w-full pl-12 pr-4 py-3 sm:py-3.5 rounded-2xl bg-slate-900 border border-slate-700/80 text-[#FCEFC3] placeholder-slate-500 focus:outline-none focus:border-[#00CEC8] focus:ring-2 focus:ring-[#00CEC8]/20 text-sm" />
       </div>
       <!-- Autocomplete Dropdown -->
