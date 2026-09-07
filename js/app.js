@@ -53,6 +53,11 @@ class GuessGameApp {
     this.bestStreak = parseInt(localStorage.getItem('yt_guesser_best_streak') || '0', 10);
     this.history = [];
 
+    // Lives and Run History
+    this.maxLives = 3;
+    this.lives = 3;
+    this.runHistory = [];
+
     // Custom Songs and Active Playlist metadata
     this.customSongs = JSON.parse(localStorage.getItem('yt_guesser_custom_songs') || '[]');
     this.customPlaylistId = localStorage.getItem('yt_guesser_custom_playlist_id') || '';
@@ -88,6 +93,11 @@ class GuessGameApp {
     this.btnNextSong = document.getElementById('btn-next-song');
     this.btnShare = document.getElementById('btn-share');
 
+    // Lives display elements
+    this.livesDisplay = document.getElementById('lives-display');
+    this.livesDisplayMobile = document.getElementById('lives-display-mobile');
+    this.livesDisplayStage = document.getElementById('lives-display-stage');
+
     // Visual elements
     this.vinyl = document.getElementById('vinyl-record');
     this.waveVisualizer = document.getElementById('wave-visualizer');
@@ -105,8 +115,25 @@ class GuessGameApp {
     this.progressBarFill = document.getElementById('progress-bar-fill');
     this.progressCountText = document.getElementById('progress-count-text');
     this.btnResetPlaylistProgress = document.getElementById('btn-reset-playlist-progress');
+
+    // Match Scorecard Elements
     this.playlistCompletedCard = document.getElementById('playlist-completed-card');
+    this.scorecardGlowBg = document.getElementById('scorecard-glow-bg');
+    this.scorecardStatusBadge = document.getElementById('scorecard-status-badge');
+    this.scorecardStatusIcon = document.getElementById('scorecard-status-icon');
+    this.scorecardStatusText = document.getElementById('scorecard-status-text');
+    this.scorecardPlaylistTitle = document.getElementById('scorecard-playlist-title');
     this.completedCardDesc = document.getElementById('completed-card-desc');
+    this.scorecardRankBadge = document.getElementById('scorecard-rank-badge');
+    this.scorecardRankLetter = document.getElementById('scorecard-rank-letter');
+    this.scorecardRankTitle = document.getElementById('scorecard-rank-title');
+    this.scorecardTotalScore = document.getElementById('scorecard-total-score');
+    this.scorecardHeartsDisplay = document.getElementById('scorecard-hearts-display');
+    this.scorecardAccuracyRate = document.getElementById('scorecard-accuracy-rate');
+    this.scorecardGodlyCount = document.getElementById('scorecard-godly-count');
+    this.scorecardTrackCount = document.getElementById('scorecard-track-count');
+    this.scorecardTrackList = document.getElementById('scorecard-track-list');
+    this.btnCopyScorecard = document.getElementById('btn-copy-scorecard');
     this.btnReplayPlaylist = document.getElementById('btn-replay-playlist');
     this.gameCentralStage = document.getElementById('btn-play-snippet')?.closest('.glass-panel');
 
@@ -183,6 +210,9 @@ class GuessGameApp {
     if (this.btnReplayPlaylist) {
       this.btnReplayPlaylist.addEventListener('click', () => this.resetCurrentPlaylistProgress());
     }
+    if (this.btnCopyScorecard) {
+      this.btnCopyScorecard.addEventListener('click', () => this.copyScorecardSummary());
+    }
 
     // Mode Toggle
     document.querySelectorAll('.mode-toggle-btn').forEach(btn => {
@@ -251,6 +281,7 @@ class GuessGameApp {
 
   async start() {
     this.updateStatsUI();
+    this.updateLivesUI();
 
     // Seed player with verified first song from default playlist
     const seedId = '_GiJ2bLLGLk';
@@ -453,41 +484,21 @@ class GuessGameApp {
   }
 
   resetCurrentPlaylistProgress() {
-    if (this.completedSongIds.size === 0) {
-      alert('目前歌單尚未有過關歌曲紀錄');
-      return;
-    }
-    if (!confirm('確定要重設目前歌單的猜歌紀錄？')) return;
     this.completedSongIds.clear();
     this.saveCompletedSongs();
+    this.lives = this.maxLives;
+    this.runHistory = [];
+    this.score = 0;
+    this.streak = 0;
+    this.updateLivesUI();
+    this.updateStatsUI();
     if (this.playlistCompletedCard) this.playlistCompletedCard.classList.add('hidden');
     if (this.gameCentralStage) this.gameCentralStage.classList.remove('hidden');
     this.startNewRound();
   }
 
   showPlaylistCompleted() {
-    this.isRoundOver = true;
-    this.isPlaying = false;
-    this.audioEngine.pause();
-    this.updateProgressUI();
-
-    if (this.playlistCompletedCard) {
-      this.playlistCompletedCard.classList.remove('hidden');
-      if (this.completedCardDesc) {
-        const catName = this.currentCategoryKey === 'custom'
-          ? this.customPlaylistTitle
-          : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
-        this.completedCardDesc.textContent = `恭喜！你已經成功猜中「${catName}」中全部 ${this.songs.length} 首歌曲！`;
-      }
-    }
-
-    if (this.gameCentralStage) this.gameCentralStage.classList.add('hidden');
-    this.choicesGrid.classList.add('hidden');
-    this.searchContainer.classList.add('hidden');
-    this.revealCard.classList.add('hidden');
-
-    this.triggerConfetti();
-    if (window.lucide) window.lucide.createIcons();
+    this.showMatchSummary(true);
   }
 
   async selectCategory(categoryKey) {
@@ -529,6 +540,9 @@ class GuessGameApp {
 
     this.loadOffsetsForCurrentCategory();
     this.loadCompletedSongs();
+    this.lives = this.maxLives;
+    this.runHistory = [];
+    this.updateLivesUI();
     if (this.playlistCompletedCard) this.playlistCompletedCard.classList.add('hidden');
     if (this.gameCentralStage) this.gameCentralStage.classList.remove('hidden');
 
@@ -619,11 +633,18 @@ class GuessGameApp {
     this.isPlaying = false;
     this.audioEngine.clearPlaybackTimer();
     this.audioEngine.pause();
+    this.updateLivesUI();
+
+    // Check if lives exhausted: Game Over!
+    if (this.lives <= 0) {
+      this.showMatchSummary(false);
+      return;
+    }
 
     // Check uncompleted songs in current playlist
     const uncompleted = this.songs.filter(s => !this.completedSongIds.has(s.id));
     if (uncompleted.length === 0 && this.songs.length > 0) {
-      this.showPlaylistCompleted();
+      this.showMatchSummary(true);
       return;
     }
 
@@ -882,7 +903,7 @@ class GuessGameApp {
         targetButton.classList.add('border-[#EB4203]', 'bg-[#EB4203]/20', 'text-[#FF9C5F]');
         targetButton.disabled = true;
       }
-      this.onRoundWrong();
+      this.onRoundWrong(guessedSong);
     }
   }
 
@@ -904,7 +925,18 @@ class GuessGameApp {
       localStorage.setItem('yt_guesser_best_streak', this.bestStreak.toString());
     }
 
+    // Record in run history
+    this.runHistory.push({
+      song: this.currentSong,
+      result: 'correct',
+      tierIndex: this.tierIndex,
+      durationLabel: tier.label,
+      points: earnedPoints,
+      mode: this.gameMode
+    });
+
     this.updateStatsUI();
+    this.updateProgressUI();
     this.triggerConfetti();
 
     let badgeText = tier.badge || 'Excellent';
@@ -917,17 +949,74 @@ class GuessGameApp {
     }
 
     this.showReveal(true, earnedPoints, badgeText);
+
+    // Lock all choice buttons to prevent repeated clicks
+    this.choicesGrid.classList.add('pointer-events-none');
+    this.choicesGrid.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = true;
+    });
+
+    this.btnNextSong.innerHTML = `
+      下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+
     this.audioEngine.playFull(this.currentSong.start || 0);
   }
 
-  onRoundWrong() {
-    if (this.tierIndex < this.tiers.length - 1) {
-      // Advance to longer clue
-      this.advanceTier();
+  onRoundWrong(guessedSong) {
+    this.isRoundOver = true;
+    this.isPlaying = false;
+    this.audioEngine.clearPlaybackTimer();
+
+    // Deduct 1 life!
+    this.lives = Math.max(0, this.lives - 1);
+    this.updateLivesUI();
+
+    this.streak = 0;
+    this.updateStatsUI();
+
+    const tier = this.tiers[this.tierIndex];
+    const durationLabel = tier.label;
+
+    // Record in run history
+    this.runHistory.push({
+      song: this.currentSong,
+      result: 'wrong',
+      tierIndex: this.tierIndex,
+      durationLabel: durationLabel,
+      points: 0,
+      mode: this.gameMode,
+      guessedTitle: guessedSong ? guessedSong.title : null
+    });
+
+    // Lock all choice buttons and highlight the correct one in teal
+    this.choicesGrid.classList.add('pointer-events-none');
+    this.choicesGrid.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = true;
+      const titleEl = btn.querySelector('.choice-title');
+      if (titleEl && titleEl.textContent === this.currentSong.title) {
+        btn.classList.add('border-[#00CEC8]', 'bg-[#00CEC8]/20', 'text-[#00CEC8]');
+      }
+    });
+
+    const isOutOfLives = this.lives <= 0;
+    const badgeText = isOutOfLives ? '💀 挑戰失敗' : '💔 猜錯了 (-1 ❤️)';
+    this.showReveal(false, 0, badgeText);
+
+    if (isOutOfLives) {
+      this.btnNextSong.innerHTML = `
+        <i data-lucide="skull" class="w-4 h-4 mr-1.5 text-[#FF9C5F]"></i>
+        結算戰績
+      `;
     } else {
-      // Out of clues, game over for this round
-      this.giveUp();
+      this.btnNextSong.innerHTML = `
+        下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+      `;
     }
+    if (window.lucide) window.lucide.createIcons();
+
+    this.audioEngine.playFull(this.currentSong.start || 0);
   }
 
   giveUp() {
@@ -935,10 +1024,53 @@ class GuessGameApp {
     this.isRoundOver = true;
     this.isPlaying = false;
     this.audioEngine.clearPlaybackTimer();
+
+    // Deduct 1 life!
+    this.lives = Math.max(0, this.lives - 1);
+    this.updateLivesUI();
+
     this.streak = 0;
     this.updateStatsUI();
 
-    this.showReveal(false, 0, '💔 沒猜中');
+    const tier = this.tiers[this.tierIndex];
+    const durationLabel = tier.label;
+
+    // Record in run history
+    this.runHistory.push({
+      song: this.currentSong,
+      result: 'giveup',
+      tierIndex: this.tierIndex,
+      durationLabel: durationLabel,
+      points: 0,
+      mode: this.gameMode
+    });
+
+    // Lock all choice buttons and highlight the correct one in teal
+    this.choicesGrid.classList.add('pointer-events-none');
+    this.choicesGrid.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = true;
+      const titleEl = btn.querySelector('.choice-title');
+      if (titleEl && titleEl.textContent === this.currentSong.title) {
+        btn.classList.add('border-[#00CEC8]', 'bg-[#00CEC8]/20', 'text-[#00CEC8]');
+      }
+    });
+
+    const isOutOfLives = this.lives <= 0;
+    const badgeText = isOutOfLives ? '💀 挑戰失敗' : '💔 放棄 (-1 ❤️)';
+    this.showReveal(false, 0, badgeText);
+
+    if (isOutOfLives) {
+      this.btnNextSong.innerHTML = `
+        <i data-lucide="skull" class="w-4 h-4 mr-1.5 text-[#FF9C5F]"></i>
+        結算戰績
+      `;
+    } else {
+      this.btnNextSong.innerHTML = `
+        下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+      `;
+    }
+    if (window.lucide) window.lucide.createIcons();
+
     this.audioEngine.playFull(this.currentSong.start || 0);
   }
 
@@ -962,7 +1094,7 @@ class GuessGameApp {
       this.revealPoints.className = 'text-[#00CEC8] font-extrabold text-sm';
     } else {
       this.revealStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EB4203]/20 text-[#FF9C5F] border border-[#EB4203]/30';
-      this.revealStatus.textContent = '再接再厲';
+      this.revealStatus.textContent = badge || '再接再厲';
       this.revealPoints.textContent = `+0 分`;
       this.revealPoints.className = 'text-slate-500 font-bold text-sm';
     }
@@ -985,6 +1117,222 @@ class GuessGameApp {
     if (this.streakElMobile) this.streakElMobile.textContent = this.streak;
     if (this.bestStreakElMobile) this.bestStreakElMobile.textContent = this.bestStreak;
     if (this.scoreElMobile) this.scoreElMobile.textContent = this.score;
+  }
+
+  updateLivesUI() {
+    const fullHeart = '❤️';
+    const emptyHeart = '🖤';
+    let heartsText = '';
+    for (let i = 0; i < this.maxLives; i++) {
+      heartsText += (i < this.lives) ? fullHeart : emptyHeart;
+    }
+
+    if (this.livesDisplay) this.livesDisplay.textContent = heartsText;
+    if (this.livesDisplayMobile) this.livesDisplayMobile.textContent = heartsText;
+    if (this.livesDisplayStage) this.livesDisplayStage.textContent = heartsText;
+  }
+
+  showMatchSummary(isVictory) {
+    this.isRoundOver = true;
+    this.isPlaying = false;
+    this.audioEngine.pause();
+    this.updateProgressUI();
+
+    const catName = this.currentCategoryKey === 'custom'
+      ? this.customPlaylistTitle
+      : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
+
+    if (this.scorecardPlaylistTitle) {
+      this.scorecardPlaylistTitle.textContent = catName;
+    }
+
+    const totalAttempted = this.runHistory.length;
+    const correctItems = this.runHistory.filter(h => h.result === 'correct');
+    const correctCount = correctItems.length;
+    const godlyCount = this.runHistory.filter(h => h.result === 'correct' && h.tierIndex === 0).length;
+
+    // Calculate Rank
+    const rankInfo = this.calculateRank(isVictory, correctCount, totalAttempted, godlyCount);
+
+    if (this.scorecardStatusBadge && this.scorecardStatusIcon && this.scorecardStatusText) {
+      if (isVictory) {
+        this.scorecardStatusBadge.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border bg-[#00CEC8]/15 border-[#00CEC8]/30 text-[#00CEC8]';
+        this.scorecardStatusIcon.textContent = '🏆';
+        this.scorecardStatusText.textContent = '挑戰成功！';
+        if (this.completedCardDesc) {
+          this.completedCardDesc.textContent = `恭喜你！順利破完「${catName}」全曲庫！`;
+        }
+        if (this.scorecardGlowBg) {
+          this.scorecardGlowBg.className = 'absolute -top-20 -right-20 w-60 h-60 bg-[#00CEC8]/20 rounded-full blur-3xl pointer-events-none';
+        }
+      } else {
+        this.scorecardStatusBadge.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border bg-[#EB4203]/20 border-[#EB4203]/40 text-[#FF9C5F]';
+        this.scorecardStatusIcon.textContent = '💀';
+        this.scorecardStatusText.textContent = '挑戰結束';
+        if (this.completedCardDesc) {
+          this.completedCardDesc.textContent = `在「${catName}」中用盡 3 次挑戰機會，再接再厲！`;
+        }
+        if (this.scorecardGlowBg) {
+          this.scorecardGlowBg.className = 'absolute -top-20 -right-20 w-60 h-60 bg-[#EB4203]/20 rounded-full blur-3xl pointer-events-none';
+        }
+      }
+    }
+
+    // Rank Badge
+    if (this.scorecardRankLetter) this.scorecardRankLetter.textContent = rankInfo.letter;
+    if (this.scorecardRankTitle) this.scorecardRankTitle.textContent = rankInfo.title;
+    if (this.scorecardRankBadge) {
+      this.scorecardRankBadge.className = `w-14 h-14 sm:w-16 sm:h-16 rounded-2xl ${rankInfo.bgClass} flex flex-col items-center justify-center shadow-lg flex-shrink-0`;
+    }
+
+    // Total Score & Hearts
+    if (this.scorecardTotalScore) this.scorecardTotalScore.textContent = this.score;
+    if (this.scorecardHeartsDisplay) {
+      let hearts = '';
+      for (let i = 0; i < this.maxLives; i++) {
+        hearts += (i < this.lives) ? '❤️' : '🖤';
+      }
+      this.scorecardHeartsDisplay.textContent = hearts;
+    }
+
+    // Accuracy & Godly count
+    const accPct = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
+    if (this.scorecardAccuracyRate) {
+      this.scorecardAccuracyRate.textContent = `${correctCount} / ${totalAttempted} (${accPct}%)`;
+    }
+    if (this.scorecardGodlyCount) {
+      const fastLabel = this.difficulty === 'hell' ? '0.15s' : '0.5s';
+      this.scorecardGodlyCount.textContent = `${godlyCount} 首 (${fastLabel})`;
+    }
+
+    // Track list count & items
+    if (this.scorecardTrackCount) this.scorecardTrackCount.textContent = totalAttempted;
+    this.renderScorecardTrackList();
+
+    if (this.playlistCompletedCard) this.playlistCompletedCard.classList.remove('hidden');
+    if (this.gameCentralStage) this.gameCentralStage.classList.add('hidden');
+    this.choicesGrid.classList.add('hidden');
+    this.searchContainer.classList.add('hidden');
+    this.revealCard.classList.add('hidden');
+
+    if (isVictory) {
+      this.triggerConfetti();
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  calculateRank(isVictory, correctCount, totalAttempted, godlyCount) {
+    if (isVictory) {
+      if (this.lives === 3 && godlyCount >= Math.floor(this.songs.length * 0.7)) {
+        return { letter: 'SSS', title: '神之耳', bgClass: 'bg-gradient-to-tr from-[#00CEC8] to-[#FCEFC3] text-slate-950 shadow-[#00CEC8]/40' };
+      }
+      if (this.lives >= 2) {
+        return { letter: 'SS', title: 'KTV MVP', bgClass: 'bg-gradient-to-tr from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-[#EB4203]/30' };
+      }
+      return { letter: 'S', title: '資深樂迷', bgClass: 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-amber-500/30' };
+    } else {
+      if (correctCount >= Math.floor(this.songs.length * 0.5)) {
+        return { letter: 'A', title: '還行吧', bgClass: 'bg-gradient-to-tr from-teal-600 to-teal-400 text-white shadow-teal-500/30' };
+      }
+      if (correctCount >= 2) {
+        return { letter: 'B', title: '再接再厲', bgClass: 'bg-gradient-to-tr from-slate-700 to-slate-500 text-white shadow-slate-700/30' };
+      }
+      return { letter: 'C', title: '專心吃水餃', bgClass: 'bg-gradient-to-tr from-rose-700 to-red-600 text-white shadow-red-600/30' };
+    }
+  }
+
+  renderScorecardTrackList() {
+    if (!this.scorecardTrackList) return;
+    this.scorecardTrackList.innerHTML = '';
+
+    if (this.runHistory.length === 0) {
+      this.scorecardTrackList.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">尚無作答紀錄</div>`;
+      return;
+    }
+
+    this.runHistory.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs';
+
+      const isCorrect = item.result === 'correct';
+      const statusIcon = isCorrect ? '✅' : '❌';
+      const badgeColor = isCorrect ? 'text-[#00CEC8] bg-[#00CEC8]/10' : 'text-[#EB4203] bg-[#EB4203]/10';
+      const modeTag = item.mode === 'search' ? '✍️盲打' : item.durationLabel;
+      const pointsText = isCorrect ? `+${item.points}` : '+0';
+
+      row.innerHTML = `
+        <div class="flex items-center space-x-2 overflow-hidden mr-2">
+          <span class="text-xs flex-shrink-0">${statusIcon}</span>
+          <span class="font-mono text-slate-500 text-[11px] flex-shrink-0">${idx + 1}.</span>
+          <div class="truncate">
+            <p class="font-bold text-[#FCEFC3] text-xs truncate">${item.song.title}</p>
+            <p class="text-[10px] text-slate-400 truncate">${item.song.artist}</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 flex-shrink-0">
+          <span class="px-2 py-0.5 rounded-md font-mono text-[10px] font-semibold ${badgeColor}">
+            ${modeTag}
+          </span>
+          <span class="font-mono font-bold ${isCorrect ? 'text-[#00CEC8]' : 'text-slate-500'} text-xs">
+            ${pointsText}
+          </span>
+        </div>
+      `;
+      this.scorecardTrackList.appendChild(row);
+    });
+  }
+
+  copyScorecardSummary() {
+    const catName = this.currentCategoryKey === 'custom'
+      ? this.customPlaylistTitle
+      : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
+
+    const isVictory = this.lives > 0 && this.completedSongIds.size === this.songs.length;
+    const totalAttempted = this.runHistory.length;
+    const correctCount = this.runHistory.filter(h => h.result === 'correct').length;
+    const godlyCount = this.runHistory.filter(h => h.result === 'correct' && h.tierIndex === 0).length;
+    const rankInfo = this.calculateRank(isVictory, correctCount, totalAttempted, godlyCount);
+
+    let hearts = '';
+    for (let i = 0; i < this.maxLives; i++) {
+      hearts += (i < this.lives) ? '❤️' : '🖤';
+    }
+
+    const fastLabel = this.difficulty === 'hell' ? '0.15s' : '0.5s';
+    const statusText = isVictory ? '🏆 挑戰成功！' : '💀 挑戰失敗';
+
+    let shareLines = [
+      `🎧 0.5 秒猜歌戰績！【${catName}】`,
+      `${statusText} · 段位：${rankInfo.letter}【${rankInfo.title}】`,
+      `⭐️ 總分：${this.score} 分 | 生命：${hearts}`,
+      `🎯 答題：${correctCount} / ${totalAttempted} 首 (${godlyCount} 首 ${fastLabel} 瞬答)`,
+      ``
+    ];
+
+    this.runHistory.slice(0, 8).forEach((item, idx) => {
+      const icon = item.result === 'correct' ? '✅' : '❌';
+      const tag = item.mode === 'search' ? '盲猜' : item.durationLabel;
+      shareLines.push(`${idx + 1}. ${icon} ${item.song.title} (${tag})`);
+    });
+
+    if (this.runHistory.length > 8) {
+      shareLines.push(`...其餘 ${this.runHistory.length - 8} 首歌`);
+    }
+
+    shareLines.push(``);
+    shareLines.push(`🔗 來聽聽看你能猜出幾首：https://mag5323.github.io/yt-music-guesser/`);
+
+    const fullShareText = shareLines.join('\n');
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullShareText).then(() => {
+        alert('✨ 戰績已複製');
+      }).catch(() => {
+        alert(fullShareText);
+      });
+    } else {
+      alert(fullShareText);
+    }
   }
 
   triggerConfetti() {

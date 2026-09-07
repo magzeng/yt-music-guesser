@@ -120,6 +120,12 @@
             </button>
           </div>
 
+          <!-- Lives Pill Desktop -->
+          <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-3 py-1.5 rounded-xl text-xs font-semibold" title="剩餘生命值 (答錯扣 1 心)">
+            <span class="text-slate-400 text-[11px]">生命</span>
+            <span id="lives-display" class="tracking-widest text-sm text-[#EB4203]">❤️❤️❤️</span>
+          </div>
+
           <!-- Stats Pill -->
           <div
             class="flex items-center space-x-2 bg-slate-900/90 border border-slate-800/90 px-3 py-1.5 rounded-xl text-xs font-semibold">
@@ -139,6 +145,8 @@
         <!-- Mobile Compact Stats Pill -->
         <div
           class="flex md:hidden items-center space-x-2 bg-slate-900/90 border border-slate-800/90 px-2.5 py-1 rounded-xl text-[11px] font-semibold">
+          <span id="lives-display-mobile" class="tracking-widest text-xs">❤️❤️❤️</span>
+          <span class="text-slate-700">|</span>
           <span class="flex items-center text-[#FF9C5F]">
             🔥 <span id="streak-count-mobile" class="ml-0.5 font-mono">0</span>
           </span>
@@ -226,19 +234,78 @@
   <!-- Main Game Stage: Mobile Ergonomics Optimized -->
   <main class="flex-1 max-w-4xl mx-auto w-full px-3.5 sm:px-4 py-2 sm:py-4 flex flex-col justify-center pb-28 sm:pb-12">
 
-    <!-- Playlist Completed Card -->
+    <!-- Match Scorecard & Social Summary (Replaces simple completed card) -->
     <div id="playlist-completed-card"
-      class="hidden glass-panel rounded-3xl p-6 sm:p-8 mb-4 sm:mb-6 border border-[#00CEC8]/40 shadow-2xl text-center">
-      <div
-        class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#00CEC8]/15 text-[#00CEC8] mx-auto flex items-center justify-center mb-3 sm:mb-4 border border-[#00CEC8]/30">
-        <i data-lucide="trophy" class="w-7 h-7 sm:w-8 sm:h-8"></i>
+      class="hidden glass-panel rounded-3xl p-5 sm:p-7 mb-4 sm:mb-6 border border-slate-700/80 shadow-2xl relative overflow-hidden">
+      <!-- Glow background blobs -->
+      <div id="scorecard-glow-bg" class="absolute -top-20 -right-20 w-60 h-60 bg-[#00CEC8]/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Top Status Banner -->
+      <div class="text-center mb-4 relative z-10">
+        <div id="scorecard-status-badge"
+          class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border bg-[#00CEC8]/15 border-[#00CEC8]/30 text-[#00CEC8]">
+          <span id="scorecard-status-icon">🏆</span>
+          <span id="scorecard-status-text">挑戰成功</span>
+        </div>
+        <h2 id="scorecard-playlist-title" class="text-xl sm:text-2xl font-black text-[#FCEFC3] tracking-tight truncate">
+          你的歌來了
+        </h2>
+        <p id="completed-card-desc" class="text-xs text-slate-400 mt-0.5">全曲庫逐首挑戰戰績看板</p>
       </div>
-      <h3 class="text-xl sm:text-2xl font-black text-[#FCEFC3] mb-2">厲害</h3>
-      <p id="completed-card-desc" class="text-slate-300 text-xs sm:text-sm mb-5">這張歌單都猜完啦！</p>
-      <div class="flex items-center justify-center">
+
+      <!-- Rank & Score Banner -->
+      <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 mb-4 flex items-center justify-between relative z-10">
+        <!-- Rank Badge -->
+        <div class="flex items-center space-x-3">
+          <div id="scorecard-rank-badge"
+            class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#EB4203] to-[#FF9C5F] flex flex-col items-center justify-center text-[#FCEFC3] shadow-lg shadow-[#EB4203]/30 flex-shrink-0">
+            <span id="scorecard-rank-letter" class="text-2xl sm:text-3xl font-black leading-none font-mono">SSS</span>
+            <span id="scorecard-rank-title" class="text-[9px] sm:text-[10px] font-bold mt-0.5 text-[#FCEFC3]/90">神之耳</span>
+          </div>
+          <div>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">總得分</p>
+            <p id="scorecard-total-score" class="text-2xl sm:text-3xl font-black text-[#00CEC8] font-mono leading-tight">0</p>
+            <div class="flex items-center space-x-1.5 text-xs text-slate-300 mt-0.5">
+              <span id="scorecard-hearts-display" class="tracking-widest text-xs sm:text-sm text-[#EB4203]">❤️❤️❤️</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Stats Column -->
+        <div class="text-right space-y-1 text-xs">
+          <div>
+            <span class="text-slate-500 text-[10px]">答對率</span>
+            <p id="scorecard-accuracy-rate" class="font-mono font-bold text-[#FCEFC3]">0 / 0</p>
+          </div>
+          <div>
+            <span class="text-slate-500 text-[10px]">秒答 (0.5s)</span>
+            <p id="scorecard-godly-count" class="font-mono font-bold text-[#FF9C5F]">0 首</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Track-by-Track List -->
+      <div class="relative z-10 mb-4">
+        <div class="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2 px-1">
+          <span>逐首答題明細 (<span id="scorecard-track-count">0</span> 首)</span>
+          <span class="text-[10px] text-slate-500">結果 · 秒數 · 得分</span>
+        </div>
+        <div id="scorecard-track-list" class="max-h-48 sm:max-h-56 overflow-y-auto space-y-1.5 pr-1">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 relative z-10">
+        <button id="btn-copy-scorecard"
+          class="w-full py-3 rounded-xl bg-gradient-to-r from-[#00CEC8] to-[#00A8A3] hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-[#00CEC8]/25 flex items-center justify-center transition-all active:scale-95">
+          <i data-lucide="share-2" class="w-4 h-4 mr-1.5 text-slate-950"></i>
+          複製 Threads / IG 戰績
+        </button>
         <button id="btn-replay-playlist"
-          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] font-bold text-sm shadow-lg shadow-[#EB4203]/25 flex items-center justify-center transition-all active:scale-95">
-          <i data-lucide="rotate-ccw" class="w-4 h-4 mr-2"></i> 重設進度再玩一次
+          class="w-full py-3 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] hover:brightness-110 text-[#FCEFC3] font-black text-xs sm:text-sm shadow-lg shadow-[#EB4203]/25 flex items-center justify-center transition-all active:scale-95">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 mr-1.5"></i>
+          重新挑戰歌單
         </button>
       </div>
     </div>
@@ -290,11 +357,17 @@
           </div>
         </div>
 
-        <!-- Tier Clue Bar -->
+        <!-- Tier Clue Bar & Stage Lives -->
         <div class="w-full max-w-xs sm:max-w-sm mb-4 sm:mb-6">
           <div class="flex items-center justify-between text-xs mb-1.5 sm:mb-2">
-            <span class="text-slate-400 text-[11px] sm:text-xs">提示長度：</span>
-            <span id="current-tier-label" class="font-mono font-semibold text-[11px] sm:text-xs">0.5 秒</span>
+            <div class="flex items-center space-x-1 text-slate-400 text-[11px] sm:text-xs">
+              <span>提示長度：</span>
+              <span id="current-tier-label" class="font-mono font-semibold text-[11px] sm:text-xs">0.5 秒</span>
+            </div>
+            <div class="flex items-center space-x-1 text-xs font-semibold">
+              <span class="text-slate-400 text-[11px]">生命：</span>
+              <span id="lives-display-stage" class="tracking-widest text-sm text-[#EB4203]">❤️❤️❤️</span>
+            </div>
           </div>
           <div class="grid grid-cols-4 gap-1.5 sm:gap-2 h-2 sm:h-2.5">
             <div class="tier-bar rounded-full bg-slate-700 transition-all duration-300"></div>
