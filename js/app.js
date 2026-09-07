@@ -35,11 +35,14 @@ export const DIFFICULTY_TIERS = {
 // GA4 Custom Event Tracking Helper (Safely logs gameplay and UGC intelligence)
 export function trackEvent(eventName, params = {}) {
   try {
+    console.log(`📡 [GA4 Track] ${eventName}:`, params);
     if (typeof window.gtag === 'function') {
       window.gtag('event', eventName, params);
+    } else {
+      console.warn('⚠️ [GA4 Track] window.gtag is not defined yet');
     }
   } catch (err) {
-    // Silently handle any adblocker or tracking errors to never interrupt gameplay
+    console.warn('GA4 tracking error:', err);
   }
 }
 
@@ -313,12 +316,34 @@ class GuessGameApp {
       }
     };
 
-    // Player error fallback
+    // Player error fallback (Graceful handling: never auto-skip in a loop!)
     this.audioEngine.onErrorCallback = (code, msg) => {
       console.warn('Game Player Error Callback:', code, msg);
       if (!this.isRoundOver) {
-        this.setAudioStatus('timeout', '載入逾時，下一題');
-        setTimeout(() => this.startNewRound(), 500);
+        const isEmbedBlocked = (code === 101 || code === 150);
+        const reasonText = isEmbedBlocked ? '此曲限制外部播放' : '音訊載入失敗';
+        this.setAudioStatus('timeout', `${reasonText}，請換下一題`);
+        
+        // Remove currently blocked song so it won't be picked again
+        if (this.currentSong && this.songs) {
+          this.completedSongIds.add(this.currentSong.id);
+        }
+
+        if (this.btnPlay) {
+          this.btnPlay.classList.remove('hidden');
+          this.btnPlay.disabled = false;
+          this.btnPlay.innerHTML = `
+            <i data-lucide="skip-forward" class="w-5 h-5 mr-2"></i>
+            ${isEmbedBlocked ? '版權限制，跳至下一題' : '點擊換下一題'}
+          `;
+          // Attach one-time click handler to cleanly advance
+          const onSkipClick = () => {
+            this.btnPlay.removeEventListener('click', onSkipClick);
+            this.startNewRound();
+          };
+          this.btnPlay.addEventListener('click', onSkipClick, { once: true });
+          if (window.lucide) window.lucide.createIcons();
+        }
       }
     };
 

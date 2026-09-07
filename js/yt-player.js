@@ -194,20 +194,29 @@ export class YouTubeAudioEngine {
 
     let hasStarted = false;
 
-    // Watchdog timer: If YouTube fails to fire PLAYING within 8 seconds, abort gracefully
+    // Watchdog timer: Extended to 12s for mobile 3G/4G connections and YouTube ad pre-rolls
     this.snippetWatchdogTimer = setTimeout(() => {
       if (!hasStarted) {
-        console.warn('[YouTube Audio Engine] Buffering watchdog triggered (8s timeout). Resetting state.');
+        console.warn('[YouTube Audio Engine] Buffering watchdog triggered (12s timeout). Resetting state.');
         this.clearPlaybackTimer();
         if (typeof onEnd === 'function') onEnd({ timeout: true });
         if (typeof this.onStateUpdateCallback === 'function') {
           this.onStateUpdateCallback('timeout', -1);
         }
       }
-    }, 8000);
+    }, 12000);
 
     // Listen for the exact moment audio starts playback
     const stateListener = (event) => {
+      // Check if YouTube is currently playing an ad
+      let isAd = false;
+      try {
+        if (typeof this.player.getVideoData === 'function') {
+          const vData = this.player.getVideoData();
+          if (vData && vData.isLive) isAd = true;
+        }
+      } catch (e) {}
+
       if (event.data === window.YT.PlayerState.PLAYING && !hasStarted) {
         hasStarted = true;
         if (this.snippetWatchdogTimer) {
