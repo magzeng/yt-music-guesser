@@ -15,6 +15,7 @@ import {
   applyOffsetsToSongs
 } from './song-data.js';
 import { YouTubeAudioEngine } from './yt-player.js';
+import { i18n, calculatePercentile } from './i18n.js';
 
 // Configuration: Snippet duration tiers in milliseconds
 export const DIFFICULTY_TIERS = {
@@ -147,10 +148,14 @@ class GuessGameApp {
     this.scorecardGodlyCount = document.getElementById('scorecard-godly-count');
     this.scorecardTrackCount = document.getElementById('scorecard-track-count');
     this.scorecardTrackList = document.getElementById('scorecard-track-list');
+    this.scorecardPercentileBadge = document.getElementById('scorecard-percentile-badge');
     this.btnSaveScorecardImg = document.getElementById('btn-save-scorecard-img');
     this.btnCopyScorecard = document.getElementById('btn-copy-scorecard');
     this.btnReplayPlaylist = document.getElementById('btn-replay-playlist');
+    this.btnLangToggle = document.getElementById('btn-lang-toggle');
     this.gameCentralStage = document.getElementById('btn-play-snippet')?.closest('.glass-panel');
+    this.lastPercentile = null;
+    this.lastIsVictory = false;
 
     // Choice & Search containers
     this.choicesGrid = document.getElementById('choices-grid');
@@ -231,6 +236,15 @@ class GuessGameApp {
     if (this.btnCopyScorecard) {
       this.btnCopyScorecard.addEventListener('click', () => this.copyScorecardSummary());
     }
+    if (this.btnLangToggle) {
+      this.btnLangToggle.addEventListener('click', () => {
+        i18n.toggleLanguage();
+      });
+    }
+
+    i18n.onLanguageChange = (lang) => {
+      this.onLanguageChanged(lang);
+    };
 
     // Mode Toggle
     document.querySelectorAll('.mode-toggle-btn').forEach(btn => {
@@ -297,7 +311,44 @@ class GuessGameApp {
     }
   }
 
+  onLanguageChanged(lang) {
+    if (this.customModal && !this.customModal.classList.contains('hidden')) {
+      this.renderCustomSongsList();
+    }
+    if (this.playlistCompletedCard && !this.playlistCompletedCard.classList.contains('hidden')) {
+      const totalAttempted = this.runHistory.length;
+      const correctItems = this.runHistory.filter(h => h.result === 'correct');
+      const correctCount = correctItems.length;
+      const godlyCount = this.runHistory.filter(h => h.result === 'correct' && h.tierIndex === 0).length;
+      const rankInfo = this.calculateRank(this.lastIsVictory, correctCount, totalAttempted, godlyCount);
+      if (this.scorecardRankTitle) this.scorecardRankTitle.textContent = rankInfo.title;
+      if (this.scorecardStatusText) {
+        this.scorecardStatusText.textContent = this.lastIsVictory ? i18n.t('challenge_success') : i18n.t('challenge_ended');
+      }
+      if (this.scorecardPercentileBadge && this.lastPercentile) {
+        this.scorecardPercentileBadge.textContent = `📊 ${i18n.t('surpassed_players', { percent: this.lastPercentile })}`;
+      }
+    }
+
+    if (!this.isPlaying && this.audioStatusText) {
+      const txt = this.audioStatusText.textContent || '';
+      if (txt.includes('準備') || txt.includes('Ready')) {
+        this.setAudioStatus('ready', i18n.t('status_ready'));
+      }
+    }
+
+    if (!this.isRoundOver) {
+      if (this.tierIndex !== undefined && this.tiers) {
+        this.updateTierUI();
+      }
+      if (!this.isPlaying && this.btnPlay && !this.btnPlay.classList.contains('hidden')) {
+        this.renderPlayButtonInitial();
+      }
+    }
+  }
+
   async start() {
+    i18n.applyToDOM();
     this.updateStatsUI();
     this.updateLivesUI();
 
@@ -308,10 +359,10 @@ class GuessGameApp {
     this.audioEngine.onStateUpdateCallback = (stateName) => {
       if (this.isRoundOver) return;
       if (stateName === 'loading' || stateName === 'buffering') {
-        this.setAudioStatus('buffering', '載入中...');
+        this.setAudioStatus('buffering', i18n.t('status_buffering'));
       } else if (stateName === 'cued' || stateName === 'ready' || stateName === 'paused') {
         if (!this.isPlaying) {
-          this.setAudioStatus('ready', '準備就緒');
+          this.setAudioStatus('ready', i18n.t('status_ready'));
         }
       }
     };
@@ -321,8 +372,8 @@ class GuessGameApp {
       console.warn('Game Player Error Callback:', code, msg);
       if (!this.isRoundOver) {
         const isEmbedBlocked = (code === 101 || code === 150);
-        const reasonText = isEmbedBlocked ? '此曲限制外部播放' : '音訊載入失敗';
-        this.setAudioStatus('timeout', `${reasonText}，請換下一題`);
+        const reasonText = isEmbedBlocked ? i18n.t('embed_blocked') : i18n.t('status_timeout');
+        this.setAudioStatus('timeout', reasonText);
         
         // Remove currently blocked song so it won't be picked again
         if (this.currentSong && this.songs) {
@@ -334,7 +385,7 @@ class GuessGameApp {
           this.btnPlay.disabled = false;
           this.btnPlay.innerHTML = `
             <i data-lucide="skip-forward" class="w-5 h-5 mr-2"></i>
-            ${isEmbedBlocked ? '版權限制，跳至下一題' : '點擊換下一題'}
+            ${isEmbedBlocked ? i18n.t('embed_btn_skip') : i18n.t('click_skip')}
           `;
           // Attach one-time click handler to cleanly advance
           const onSkipClick = () => {
@@ -572,7 +623,7 @@ class GuessGameApp {
     } else {
       // Default playlist: dynamically fetched from YouTube Music
       if (!this.defaultSongs || this.defaultSongs.length === 0) {
-        this.setAudioStatus('buffering', '載入預設歌單');
+        this.setAudioStatus('buffering', i18n.t('status_buffering'));
         try {
           const data = await fetchPlaylistSongs(DEFAULT_PLAYLIST_ID);
           if (data && data.songs && data.songs.length > 0) {
@@ -659,11 +710,7 @@ class GuessGameApp {
     if (!this.isRoundOver && !this.isPlaying && this.btnPlay) {
       this.tierIndex = 0;
       this.updateTierUI();
-      this.btnPlay.innerHTML = `
-        <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
-        播放 ${this.difficulty === 'hell' ? '0.15 秒' : '0.5 秒'}
-      `;
-      if (window.lucide) window.lucide.createIcons();
+      this.renderPlayButtonInitial();
     }
   }
 
@@ -719,7 +766,7 @@ class GuessGameApp {
       this.searchContainer.classList.remove('hidden');
     }
 
-    this.setAudioStatus('buffering', '載入中');
+    this.setAudioStatus('buffering', i18n.t('status_buffering'));
 
     // Pick random target song ONLY from uncompleted songs!
     const randomIndex = Math.floor(Math.random() * uncompleted.length);
@@ -739,10 +786,7 @@ class GuessGameApp {
     this.choicesGrid.classList.remove('pointer-events-none', 'opacity-50');
     this.btnPlay.classList.remove('hidden');
     this.btnPlay.disabled = false;
-    this.btnPlay.innerHTML = `
-      <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
-      播放 ${this.difficulty === 'hell' ? '0.15 秒' : '0.5 秒'}
-    `;
+    this.renderPlayButtonInitial();
     this.btnReplay.classList.add('hidden');
     this.btnNextTier.classList.add('hidden');
     this.btnGiveUp.classList.remove('hidden');
@@ -809,7 +853,7 @@ class GuessGameApp {
     ).slice(0, 6);
 
     if (matches.length === 0) {
-      this.searchResults.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">找不到歌名，可輸入歌手</div>`;
+      this.searchResults.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">${i18n.t('no_search_results')}</div>`;
       this.searchResults.classList.remove('hidden');
       return;
     }
@@ -823,7 +867,7 @@ class GuessGameApp {
           <p class="font-medium text-[#FCEFC3] text-sm truncate">${song.title}</p>
           <p class="text-xs text-slate-400 truncate">${song.artist}</p>
         </div>
-        <span class="text-xs text-[#00CEC8] font-semibold flex-shrink-0">送出</span>
+        <span class="text-xs text-[#00CEC8] font-semibold flex-shrink-0">${i18n.t('submit')}</span>
       `;
       item.addEventListener('click', () => {
         this.searchResults.classList.add('hidden');
@@ -844,7 +888,7 @@ class GuessGameApp {
       : `${tier.duration}ms`;
 
     // UI state: buffering before audio starts
-    this.setAudioStatus('buffering', `載入中 (${durationText})`);
+    this.setAudioStatus('buffering', `${i18n.t('status_buffering')} (${durationText})`);
     this.btnPlay.classList.add('pulse-active');
     this.btnPlay.disabled = true;
     this.btnPlay.innerHTML = `
@@ -852,7 +896,7 @@ class GuessGameApp {
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
       </svg>
-      音訊緩衝中...
+      ${i18n.t('audio_buffering')}
     `;
 
     this.audioEngine.playSnippet(
@@ -860,12 +904,12 @@ class GuessGameApp {
       this.currentSong.start || 0,
       () => {
         // Audio started playing
-        this.setAudioStatus('playing', `🔊 正在播放 ${durationText}！`);
+        this.setAudioStatus('playing', `🔊 ${i18n.t('status_playing')} ${durationText}!`);
         this.vinyl.classList.add('playing');
         this.waveVisualizer.classList.remove('opacity-0');
         this.btnPlay.innerHTML = `
           <i data-lucide="volume-2" class="w-5 h-5 mr-2 animate-bounce inline"></i>
-          正在聆聽 (${durationText})...
+          ${i18n.t('status_listening')} (${durationText})...
         `;
         if (window.lucide) window.lucide.createIcons();
       },
@@ -878,14 +922,14 @@ class GuessGameApp {
         this.waveVisualizer.classList.add('opacity-0');
 
         if (res && res.timeout) {
-          this.setAudioStatus('timeout', '連線逾時，請點擊重試');
+          this.setAudioStatus('timeout', i18n.t('status_timeout'));
           this.btnPlay.classList.remove('hidden');
           this.btnPlay.innerHTML = `
             <i data-lucide="rotate-ccw" class="w-5 h-5 mr-2"></i>
-            連線逾時，點擊重試
+            ${i18n.t('retry_timeout')}
           `;
         } else {
-          this.setAudioStatus('paused', '音訊結束，請作答');
+          this.setAudioStatus('paused', i18n.t('status_paused'));
           this.btnPlay.classList.add('hidden');
           this.btnReplay.classList.remove('hidden');
           if (this.tierIndex < this.tiers.length - 1) {
@@ -910,16 +954,34 @@ class GuessGameApp {
     }
   }
 
+  renderPlayButtonInitial() {
+    if (!this.btnPlay) return;
+    const isEn = i18n.currentLang === 'en';
+    const durationStr = this.difficulty === 'hell'
+      ? (isEn ? '0.15s' : '0.15 秒')
+      : (isEn ? '0.5s' : '0.5 秒');
+    this.btnPlay.innerHTML = `
+      <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
+      ${i18n.t('play_snippet', { time: durationStr })}
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   updateTierUI() {
     const tier = this.tiers[this.tierIndex];
     const isHell = this.difficulty === 'hell';
     const earnedPoints = this.getTierPoints(this.tierIndex);
     const modeBonusText = this.gameMode === 'search' ? ' · 1.5x' : '';
+    const isEn = i18n.currentLang === 'en';
+    const labelText = isEn
+      ? (tier.duration >= 1000 ? `${(tier.duration / 1000).toFixed(1)}s` : `${tier.duration}ms`)
+      : tier.label;
+    const ptsText = isEn ? `+${earnedPoints} pts` : `+${earnedPoints}分`;
 
     this.tierLabel.innerHTML = `
       <span class="text-slate-400 mr-1 text-[11px]">⏱️</span>
-      <span class="${isHell ? 'text-[#FF9C5F] font-black' : 'text-[#00CEC8] font-bold'}">${tier.label}</span>
-      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-1.5">(+${earnedPoints}分${modeBonusText})</span>
+      <span class="${isHell ? 'text-[#FF9C5F] font-black' : 'text-[#00CEC8] font-bold'}">${labelText}</span>
+      <span class="text-xs ${isHell ? 'text-[#FCEFC3] font-bold' : 'text-slate-400'} ml-1.5">(${ptsText}${modeBonusText})</span>
     `;
 
     this.tierBars.forEach((bar, idx) => {
@@ -941,7 +1003,7 @@ class GuessGameApp {
         : `${nextTier.duration}ms`;
       this.btnNextTier.innerHTML = `
         <i data-lucide="fast-forward" class="w-4 h-4 mr-1"></i>
-        解鎖下一段 (${nextDuration})
+        ${i18n.t('unlock_next_tier')} (${nextDuration})
       `;
       if (window.lucide) window.lucide.createIcons();
     }
@@ -1032,7 +1094,7 @@ class GuessGameApp {
     });
 
     this.btnNextSong.innerHTML = `
-      下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+      ${i18n.t('next_song')} <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
     `;
     if (window.lucide) window.lucide.createIcons();
 
@@ -1088,17 +1150,17 @@ class GuessGameApp {
     });
 
     const isOutOfLives = this.lives <= 0;
-    const badgeText = isOutOfLives ? '💀 挑戰失敗' : '💔 猜錯了 (-1 ❤️)';
+    const badgeText = isOutOfLives ? `💀 ${i18n.t('challenge_ended')}` : `💔 ${i18n.t('wrong')} (-1 ❤️)`;
     this.showReveal(false, 0, badgeText);
 
     if (isOutOfLives) {
       this.btnNextSong.innerHTML = `
         <i data-lucide="skull" class="w-4 h-4 mr-1.5 text-[#FF9C5F]"></i>
-        結算戰績
+        ${i18n.t('challenge_ended')}
       `;
     } else {
       this.btnNextSong.innerHTML = `
-        下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+        ${i18n.t('next_song')} <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
       `;
     }
     if (window.lucide) window.lucide.createIcons();
@@ -1155,17 +1217,17 @@ class GuessGameApp {
     });
 
     const isOutOfLives = this.lives <= 0;
-    const badgeText = isOutOfLives ? '💀 挑戰失敗' : '💔 放棄 (-1 ❤️)';
+    const badgeText = isOutOfLives ? `💀 ${i18n.t('challenge_ended')}` : `💔 ${i18n.t('tag_giveup')} (-1 ❤️)`;
     this.showReveal(false, 0, badgeText);
 
     if (isOutOfLives) {
       this.btnNextSong.innerHTML = `
         <i data-lucide="skull" class="w-4 h-4 mr-1.5 text-[#FF9C5F]"></i>
-        結算戰績
+        ${i18n.t('challenge_ended')}
       `;
     } else {
       this.btnNextSong.innerHTML = `
-        下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+        ${i18n.t('next_song')} <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
       `;
     }
     if (window.lucide) window.lucide.createIcons();
@@ -1186,15 +1248,16 @@ class GuessGameApp {
     this.revealTitle.textContent = this.currentSong.title;
     this.revealArtist.textContent = this.currentSong.artist;
 
+    const isEn = i18n.currentLang === 'en';
     if (isSuccess) {
       this.revealStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#00CEC8]/20 text-[#00CEC8] border border-[#00CEC8]/30';
       this.revealStatus.textContent = `${badge}`;
-      this.revealPoints.textContent = `+${points} 分`;
+      this.revealPoints.textContent = isEn ? `+${points} pts` : `+${points} 分`;
       this.revealPoints.className = 'text-[#00CEC8] font-extrabold text-sm';
     } else {
       this.revealStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#EB4203]/20 text-[#FF9C5F] border border-[#EB4203]/30';
-      this.revealStatus.textContent = badge || '再接再厲';
-      this.revealPoints.textContent = `+0 分`;
+      this.revealStatus.textContent = badge || (isEn ? 'Keep Trying' : '再接再厲');
+      this.revealPoints.textContent = isEn ? `+0 pts` : `+0 分`;
       this.revealPoints.className = 'text-slate-500 font-bold text-sm';
     }
 
@@ -1253,13 +1316,27 @@ class GuessGameApp {
     // Calculate Rank
     const rankInfo = this.calculateRank(isVictory, correctCount, totalAttempted, godlyCount);
 
+    // Calculate Percentile (Normal Distribution CDF: 超越 X% 玩家)
+    const maxPointsPerSong = this.gameMode === 'search'
+      ? (this.difficulty === 'hell' ? 300 : 150)
+      : (this.difficulty === 'hell' ? 200 : 100);
+    const maxPossibleScore = Math.max(1, (this.songs?.length || 10) * maxPointsPerSong);
+    const isGodlyMaster = isVictory && godlyCount >= Math.floor((this.songs?.length || 10) * 0.7);
+    const percentile = calculatePercentile(this.score, maxPossibleScore, isGodlyMaster);
+    this.lastPercentile = percentile;
+    this.lastIsVictory = isVictory;
+
+    if (this.scorecardPercentileBadge) {
+      this.scorecardPercentileBadge.textContent = `📊 ${i18n.t('surpassed_players', { percent: percentile })}`;
+    }
+
     if (this.scorecardStatusBadge && this.scorecardStatusIcon && this.scorecardStatusText) {
       if (isVictory) {
         this.scorecardStatusBadge.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border bg-[#00CEC8]/15 border-[#00CEC8]/30 text-[#00CEC8]';
         this.scorecardStatusIcon.textContent = '🏆';
-        this.scorecardStatusText.textContent = '挑戰成功！';
+        this.scorecardStatusText.textContent = i18n.t('challenge_success');
         if (this.completedCardDesc) {
-          this.completedCardDesc.textContent = `恭喜你！順利破完「${catName}」全曲庫！`;
+          this.completedCardDesc.textContent = i18n.t('scorecard_summary');
         }
         if (this.scorecardGlowBg) {
           this.scorecardGlowBg.className = 'absolute -top-20 -right-20 w-60 h-60 bg-[#00CEC8]/20 rounded-full blur-3xl pointer-events-none';
@@ -1267,9 +1344,9 @@ class GuessGameApp {
       } else {
         this.scorecardStatusBadge.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 border bg-[#EB4203]/20 border-[#EB4203]/40 text-[#FF9C5F]';
         this.scorecardStatusIcon.textContent = '💀';
-        this.scorecardStatusText.textContent = '挑戰結束';
+        this.scorecardStatusText.textContent = i18n.t('challenge_ended');
         if (this.completedCardDesc) {
-          this.completedCardDesc.textContent = `在「${catName}」中用盡 3 次挑戰機會，再接再厲！`;
+          this.completedCardDesc.textContent = i18n.t('scorecard_summary');
         }
         if (this.scorecardGlowBg) {
           this.scorecardGlowBg.className = 'absolute -top-20 -right-20 w-60 h-60 bg-[#EB4203]/20 rounded-full blur-3xl pointer-events-none';
@@ -1327,6 +1404,7 @@ class GuessGameApp {
       rank_letter: rankInfo.letter,
       rank_title: rankInfo.title,
       total_score: this.score,
+      percentile: percentile,
       remaining_lives: this.lives,
       correct_count: correctCount,
       total_attempted: totalAttempted,
@@ -1340,20 +1418,20 @@ class GuessGameApp {
   calculateRank(isVictory, correctCount, totalAttempted, godlyCount) {
     if (isVictory) {
       if (this.lives === 3 && godlyCount >= Math.floor(this.songs.length * 0.7)) {
-        return { letter: 'SSS', title: '神之耳', bgClass: 'bg-gradient-to-tr from-[#00CEC8] to-[#FCEFC3] text-slate-950 shadow-[#00CEC8]/40' };
+        return { letter: 'SSS', title: i18n.t('rank_sss'), bgClass: 'bg-gradient-to-tr from-[#00CEC8] to-[#FCEFC3] text-slate-950 shadow-[#00CEC8]/40' };
       }
       if (this.lives >= 2) {
-        return { letter: 'SS', title: 'KTV MVP', bgClass: 'bg-gradient-to-tr from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-[#EB4203]/30' };
+        return { letter: 'SS', title: i18n.t('rank_ss'), bgClass: 'bg-gradient-to-tr from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-[#EB4203]/30' };
       }
-      return { letter: 'S', title: '資深樂迷', bgClass: 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-amber-500/30' };
+      return { letter: 'S', title: i18n.t('rank_s'), bgClass: 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-amber-500/30' };
     } else {
       if (correctCount >= Math.floor(this.songs.length * 0.5)) {
-        return { letter: 'A', title: '還行吧', bgClass: 'bg-gradient-to-tr from-teal-600 to-teal-400 text-white shadow-teal-500/30' };
+        return { letter: 'A', title: i18n.t('rank_a'), bgClass: 'bg-gradient-to-tr from-teal-600 to-teal-400 text-white shadow-teal-500/30' };
       }
       if (correctCount >= 2) {
-        return { letter: 'B', title: '再接再厲', bgClass: 'bg-gradient-to-tr from-slate-700 to-slate-500 text-white shadow-slate-700/30' };
+        return { letter: 'B', title: i18n.t('rank_b'), bgClass: 'bg-gradient-to-tr from-slate-700 to-slate-500 text-white shadow-slate-700/30' };
       }
-      return { letter: 'C', title: '專心吃水餃', bgClass: 'bg-gradient-to-tr from-rose-700 to-red-600 text-white shadow-red-600/30' };
+      return { letter: 'C', title: i18n.t('rank_c'), bgClass: 'bg-gradient-to-tr from-rose-700 to-red-600 text-white shadow-red-600/30' };
     }
   }
 
@@ -1398,67 +1476,90 @@ class GuessGameApp {
     });
   }
 
-  copyScorecardSummary() {
-    const catName = this.currentCategoryKey === 'custom'
-      ? this.customPlaylistTitle
-      : (SONG_CATEGORIES[this.currentCategoryKey]?.name || DEFAULT_PLAYLIST_TITLE);
+  getNumberEmoji(n) {
+    const keycaps = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+    if (n <= 10) return keycaps[n] || `${n}️⃣`;
+    const digits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+    return String(n).split('').map(d => digits[parseInt(d, 10)]).join('');
+  }
 
+  showToast(msg) {
+    const toast = document.getElementById('toast-notification');
+    const toastMsg = document.getElementById('toast-message');
+    if (!toast) {
+      alert(msg);
+      return;
+    }
+    if (toastMsg) toastMsg.textContent = msg;
+    toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+    toast.classList.add('opacity-100', 'translate-y-0');
+    clearTimeout(this._toastTimeout);
+    this._toastTimeout = setTimeout(() => {
+      toast.classList.remove('opacity-100', 'translate-y-0');
+      toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+    }, 2200);
+  }
+
+  copyScorecardSummary() {
     const isVictory = this.lives > 0 && this.completedSongIds.size === this.songs.length;
     const totalAttempted = this.runHistory.length;
     const correctCount = this.runHistory.filter(h => h.result === 'correct').length;
     const godlyCount = this.runHistory.filter(h => h.result === 'correct' && h.tierIndex === 0).length;
     const rankInfo = this.calculateRank(isVictory, correctCount, totalAttempted, godlyCount);
 
-    let hearts = '';
-    for (let i = 0; i < this.maxLives; i++) {
-      hearts += (i < this.lives) ? '❤️' : '🖤';
-    }
+    const maxPointsPerSong = this.gameMode === 'search'
+      ? (this.difficulty === 'hell' ? 300 : 150)
+      : (this.difficulty === 'hell' ? 200 : 100);
+    const maxPossibleScore = Math.max(1, (this.songs?.length || 10) * maxPointsPerSong);
+    const isGodlyMaster = isVictory && godlyCount >= Math.floor((this.songs?.length || 10) * 0.7);
+    const percentile = this.lastPercentile || calculatePercentile(this.score, maxPossibleScore, isGodlyMaster);
 
-    const fastLabel = this.difficulty === 'hell' ? '0.15s' : '0.5s';
-    const statusText = isVictory ? '🏆 挑戰成功！' : '💀 挑戰失敗';
+    const titleLine = i18n.t('wordle_title');
+    const ratingLine = i18n.t('wordle_rating', { title: `${rankInfo.letter} ${rankInfo.title}`, score: this.score });
+    const percentLine = i18n.t('wordle_percent', { percent: percentile });
 
-    let shareLines = [
-      `🎧 0.5 秒猜歌戰績！【${catName}】`,
-      `${statusText} · 段位：${rankInfo.letter}【${rankInfo.title}】`,
-      `⭐️ 總分：${this.score} 分 | 生命：${hearts}`,
-      `🎯 答題：${correctCount} / ${totalAttempted} 首 (${godlyCount} 首 ${fastLabel} 瞬答)`,
-      ``
-    ];
-
-    this.runHistory.slice(0, 8).forEach((item, idx) => {
-      const icon = item.result === 'correct' ? '✅' : '❌';
-      const tag = item.mode === 'search' ? '盲猜' : item.durationLabel;
-      shareLines.push(`${idx + 1}. ${icon} ${item.song.title} (${tag})`);
+    const rows = this.runHistory.map((item, idx) => {
+      const num = this.getNumberEmoji(idx + 1);
+      if (item.result === 'correct') {
+        const isBlindInstant = item.mode === 'search' || item.tierIndex === 0;
+        const icon = isBlindInstant ? '⚡️' : '🟩';
+        const tag = item.mode === 'search' ? i18n.t('tag_blind') : i18n.t('tag_choice');
+        return `${num} ${icon} ${item.durationLabel} (${tag})`;
+      } else {
+        const tag = item.result === 'giveup' ? i18n.t('tag_giveup') : i18n.t('tag_wrong');
+        return `${num} 🟥 ${tag}`;
+      }
     });
 
-    if (this.runHistory.length > 8) {
-      shareLines.push(`...其餘 ${this.runHistory.length - 8} 首歌`);
-    }
+    const challengeLine = i18n.t('wordle_challenge');
 
-    shareLines.push(``);
-    shareLines.push(`🔗 來聽聽看你能猜出幾首：https://magzeng.github.io/yt-music-guesser/`);
+    const shareText = [
+      titleLine,
+      ratingLine,
+      percentLine,
+      '',
+      ...rows,
+      '',
+      challengeLine
+    ].join('\n');
 
-    const fullShareText = shareLines.join('\n');
-
-    // GA4 Track Event: scorecard_shared (text)
+    // GA4 Track Event: scorecard_shared (wordle format)
     trackEvent('scorecard_shared', {
-      share_type: 'text',
-      playlist_title: catName,
-      playlist_id: this.customPlaylistId || this.currentCategoryKey,
+      share_type: 'wordle_text',
       rank_letter: rankInfo.letter,
       total_score: this.score,
-      is_victory: isVictory,
-      remaining_lives: this.lives
+      percentile: percentile,
+      is_victory: isVictory
     });
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(fullShareText).then(() => {
-        alert('✨ 戰績已複製');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        this.showToast(i18n.t('copied_toast'));
       }).catch(() => {
-        alert(fullShareText);
+        this.showToast(i18n.t('copied_toast'));
       });
     } else {
-      alert(fullShareText);
+      this.showToast(i18n.t('copied_toast'));
     }
   }
 
@@ -1539,7 +1640,7 @@ class GuessGameApp {
     }
 
     // 2. Status Badge Pill
-    const badgeText = isVictory ? '🏆 挑戰成功！' : '💀 挑戰結束';
+    const badgeText = isVictory ? `🏆 ${i18n.t('challenge_success')}` : `💀 ${i18n.t('challenge_ended')}`;
     ctx.font = 'bold 12px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
     const badgeMetrics = ctx.measureText(badgeText);
     const badgeWidth = badgeMetrics.width + 24;
@@ -1566,7 +1667,7 @@ class GuessGameApp {
     // Subtitle
     ctx.font = '12px "Noto Sans TC", "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('成績總覽', width / 2, 110);
+    ctx.fillText(i18n.t('scorecard_summary'), width / 2, 110);
 
     // 4. Rank & Score Box
     const boxX = 36;
@@ -1607,32 +1708,43 @@ class GuessGameApp {
     ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
     ctx.fillText(rankInfo.title, boxX + 50, boxY + 66);
 
-    // Score & Hearts
+    // Score & Hearts & Percentile
+    const maxPointsPerSong = this.gameMode === 'search'
+      ? (this.difficulty === 'hell' ? 300 : 150)
+      : (this.difficulty === 'hell' ? 200 : 100);
+    const maxPossibleScore = Math.max(1, (this.songs?.length || 10) * maxPointsPerSong);
+    const isGodlyMaster = isVictory && godlyCount >= Math.floor((this.songs?.length || 10) * 0.7);
+    const percentile = this.lastPercentile || calculatePercentile(this.score, maxPossibleScore, isGodlyMaster);
+
     ctx.textAlign = 'left';
     ctx.font = '11px "Noto Sans TC", sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('總得分', boxX + 100, boxY + 32);
+    ctx.fillText(i18n.t('total_score'), boxX + 100, boxY + 28);
 
-    ctx.font = '900 30px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '900 28px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#00CEC8';
-    ctx.fillText(this.score.toString(), boxX + 100, boxY + 60);
+    ctx.fillText(this.score.toString(), boxX + 100, boxY + 54);
 
-    ctx.font = '13px sans-serif';
-    ctx.fillText(hearts, boxX + 100, boxY + 82);
+    ctx.font = '12px sans-serif';
+    ctx.fillText(hearts, boxX + 100, boxY + 72);
+
+    ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+    ctx.fillStyle = '#00CEC8';
+    ctx.fillText(`📊 ${i18n.t('surpassed_players', { percent: percentile })}`, boxX + 100, boxY + 86);
 
     // Accuracy & Godly stats (right side)
     const accPct = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
     ctx.textAlign = 'right';
     ctx.font = '10px "Noto Sans TC", sans-serif';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('答對率', boxX + boxW - 18, boxY + 32);
+    ctx.fillText(i18n.t('accuracy'), boxX + boxW - 18, boxY + 32);
     ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#FCEFC3';
     ctx.fillText(`${correctCount} / ${totalAttempted} (${accPct}%)`, boxX + boxW - 18, boxY + 48);
 
     ctx.font = '10px "Noto Sans TC", sans-serif';
     ctx.fillStyle = '#64748b';
-    ctx.fillText(`秒答 (${fastLabel})`, boxX + boxW - 18, boxY + 68);
+    ctx.fillText(`${i18n.t('instant_guess')} (${fastLabel})`, boxX + boxW - 18, boxY + 68);
     ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#FF9C5F';
     ctx.fillText(`${godlyCount} 首`, boxX + boxW - 18, boxY + 84);
@@ -1642,12 +1754,12 @@ class GuessGameApp {
     ctx.textAlign = 'left';
     ctx.font = 'bold 12px "Noto Sans TC", sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`逐首答題明細 (${totalAttempted} 首)`, boxX + 2, listStartY);
+    ctx.fillText(`${i18n.t('tracks_detail')} (${totalAttempted})`, boxX + 2, listStartY);
 
     ctx.textAlign = 'right';
     ctx.font = '10px "Noto Sans TC", sans-serif';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('結果 · 秒數 · 得分', boxX + boxW - 2, listStartY);
+    ctx.fillText(i18n.t('results_header'), boxX + boxW - 2, listStartY);
 
     // 6. Track Rows
     tracksToShow.forEach((item, idx) => {
@@ -1975,7 +2087,7 @@ class GuessGameApp {
   renderCustomSongsList() {
     this.customListEl.innerHTML = '';
     const count = this.customSongs.length;
-    this.customListHeader.textContent = `目前題庫曲目 (${count} 首)`;
+    this.customListHeader.textContent = i18n.t('custom_list_header', { count });
 
     if (count > 0 && this.btnShareCustomChallenge) {
       this.btnShareCustomChallenge.classList.remove('hidden');
@@ -1984,7 +2096,7 @@ class GuessGameApp {
     }
 
     if (count === 0) {
-      this.customListEl.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">尚未匯入歌單或單曲</p>`;
+      this.customListEl.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">${i18n.t('custom_empty')}</p>`;
       return;
     }
 
@@ -1995,11 +2107,11 @@ class GuessGameApp {
         <div class="truncate mr-2">
           <p class="font-bold text-[#FCEFC3] truncate">${s.title}</p>
           <p class="text-[11px] text-slate-400 truncate">
-            ${s.artist} ${s.start > 0 ? `<span class="text-[#FF9C5F] font-mono">(${s.start}s起)</span>` : ''}
+            ${s.artist} ${s.start > 0 ? `<span class="text-[#FF9C5F] font-mono">${i18n.t('start_at', { s: s.start })}</span>` : ''}
           </p>
         </div>
         <button data-index="${idx}" class="btn-delete-custom text-[#FF9C5F] hover:text-[#EB4203] p-1 flex-shrink-0 text-[11px] font-bold">
-          刪除
+          ${i18n.t('delete')}
         </button>
       `;
       this.customListEl.appendChild(row);

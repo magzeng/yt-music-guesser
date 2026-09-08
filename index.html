@@ -70,94 +70,105 @@
     <div
       class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-slate-800 border-t-[#00CEC8] border-r-[#EB4203] animate-spin mb-4">
     </div>
-    <p class="text-[#FCEFC3] font-bold text-sm sm:text-base animate-pulse">正在初始化 YouTube...</p>
-    <p class="text-[#00CEC8]/80 text-xs mt-1">載入中</p>
+    <p data-i18n="init_youtube" class="text-[#FCEFC3] font-bold text-sm sm:text-base animate-pulse">正在初始化 YouTube...</p>
+    <p data-i18n="loading" class="text-[#00CEC8]/80 text-xs mt-1">載入中</p>
   </div>
 
   <!-- Header: Mobile Optimized Responsive Navbar -->
   <header class="border-b border-slate-800/80 sticky top-0 z-40 bg-[#080c14]/85 backdrop-blur-md">
-    <div class="max-w-4xl mx-auto px-3.5 sm:px-4 py-2.5 sm:py-3">
-      <!-- Main Row: Logo + Stats -->
+    <div class="max-w-5xl xl:max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
+      <!-- Main Row: Logo + Stats + Lang Toggle -->
       <div class="flex items-center justify-between gap-2">
         <!-- Logo & Title -->
-        <div class="flex items-center space-x-2.5">
+        <div class="flex items-center space-x-2 sm:space-x-2.5 flex-shrink-0">
           <div
             class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-[#EB4203] to-[#FF9C5F] flex items-center justify-center shadow-lg shadow-[#EB4203]/25 flex-shrink-0">
             <i data-lucide="headphones" class="w-4 h-4 sm:w-5 sm:h-5 text-[#FCEFC3]"></i>
           </div>
-          <div>
-            <h1
-              class="font-extrabold text-sm sm:text-base md:text-lg tracking-tight bg-gradient-to-r from-[#FCEFC3] via-white to-[#FF9C5F] bg-clip-text text-transparent leading-snug">
+          <div class="flex flex-col">
+            <h1 data-i18n="app_title"
+              class="font-extrabold text-sm sm:text-base md:text-lg tracking-tight bg-gradient-to-r from-[#FCEFC3] via-white to-[#FF9C5F] bg-clip-text text-transparent leading-snug whitespace-nowrap">
               你的歌來了
             </h1>
-            <p class="text-[9px] sm:text-[10px] text-slate-400">零秒猜歌</p>
+            <p data-i18n="app_subtitle" class="text-[9px] sm:text-[10px] text-slate-400 whitespace-nowrap">零秒猜歌</p>
           </div>
         </div>
 
-        <!-- Desktop Controls & Stats Group -->
-        <div class="hidden md:flex items-center space-x-2.5">
-          <!-- Mode Switcher -->
-          <div class="bg-slate-900/90 border border-slate-800 p-1 rounded-xl flex items-center text-xs">
-            <button data-mode="choice"
-              class="mode-toggle-btn px-2.5 py-1 rounded-lg bg-slate-700 text-white font-medium transition-colors">
-              選擇題
-            </button>
-            <button data-mode="search"
-              class="mode-toggle-btn px-2.5 py-1 rounded-lg text-slate-400 font-medium hover:text-white transition-colors">
-              輸入歌名 <span class="text-[#00CEC8] font-bold text-[10px] ml-0.5">+50%</span>
-            </button>
+        <!-- Right Controls & Stats Group -->
+        <div class="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
+          <!-- Desktop Controls & Stats Group -->
+          <div class="hidden md:flex items-center space-x-1.5 lg:space-x-2.5 flex-shrink-0">
+            <!-- Mode Switcher -->
+            <div class="bg-slate-900/90 border border-slate-800 p-0.5 lg:p-1 rounded-xl flex items-center text-xs flex-shrink-0 whitespace-nowrap">
+              <button data-mode="choice" data-i18n="mode_choice"
+                class="mode-toggle-btn px-2 lg:px-2.5 py-1 rounded-lg bg-slate-700 text-white font-medium transition-colors whitespace-nowrap">
+                選擇題
+              </button>
+              <button data-mode="search"
+                class="mode-toggle-btn px-2 lg:px-2.5 py-1 rounded-lg text-slate-400 font-medium hover:text-white transition-colors whitespace-nowrap">
+                <span data-i18n="mode_search">輸入歌名</span> <span class="text-[#00CEC8] font-bold text-[10px] ml-0.5">+50%</span>
+              </button>
+            </div>
+
+            <!-- Difficulty Switcher -->
+            <div class="bg-slate-900/90 border border-slate-800 p-0.5 lg:p-1 rounded-xl flex items-center text-xs flex-shrink-0 whitespace-nowrap">
+              <button data-diff="normal" data-i18n="diff_normal"
+                class="diff-toggle-btn px-2 lg:px-2.5 py-1 rounded-lg bg-slate-700 text-white font-semibold transition-all whitespace-nowrap">
+                一般
+              </button>
+              <button data-diff="hell"
+                class="diff-toggle-btn px-2 lg:px-2.5 py-1 rounded-lg text-slate-400 font-bold hover:text-[#FF9C5F] transition-all flex items-center whitespace-nowrap">
+                <span data-i18n="diff_hell">🔥 挑戰</span> <span class="text-[#FF9C5F] font-bold text-[10px] ml-0.5">2x</span>
+              </button>
+            </div>
+
+            <!-- Lives Pill Desktop -->
+            <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-2 lg:px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0" title="剩餘生命值 (答錯扣 1 心)">
+              <span data-i18n="lives" class="text-slate-400 text-[11px] whitespace-nowrap">生命</span>
+              <span id="lives-display" class="tracking-widest text-sm text-[#EB4203] whitespace-nowrap inline-block">❤️❤️❤️</span>
+            </div>
+
+            <!-- Stats Pill -->
+            <div
+              class="flex items-center space-x-1.5 lg:space-x-2 bg-slate-900/90 border border-slate-800/90 px-2 lg:px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0">
+              <span class="flex items-center text-[#FF9C5F] whitespace-nowrap" title="連勝">
+                🔥 <span id="streak-count" class="ml-1 font-mono">0</span>
+              </span>
+              <span class="flex items-center text-[#00CEC8] whitespace-nowrap" title="最高連勝">
+                🏆 <span id="best-streak-count" class="ml-1 font-mono">0</span>
+              </span>
+              <span class="text-slate-700">|</span>
+              <span class="flex items-center text-[#FCEFC3] whitespace-nowrap" title="總分">
+                ⭐️ <span id="score-count" class="ml-1 font-mono">0</span>
+              </span>
+            </div>
           </div>
 
-          <!-- Difficulty Switcher -->
-          <div class="bg-slate-900/90 border border-slate-800 p-1 rounded-xl flex items-center text-xs">
-            <button data-diff="normal"
-              class="diff-toggle-btn px-2.5 py-1 rounded-lg bg-slate-700 text-white font-semibold transition-all">
-              一般
-            </button>
-            <button data-diff="hell"
-              class="diff-toggle-btn px-2.5 py-1 rounded-lg text-slate-400 font-bold hover:text-[#FF9C5F] transition-all flex items-center">
-              🔥 挑戰 <span class="text-[#FF9C5F] font-bold text-[10px] ml-0.5">2x</span>
-            </button>
-          </div>
-
-          <!-- Lives Pill Desktop -->
-          <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-3 py-1.5 rounded-xl text-xs font-semibold" title="剩餘生命值 (答錯扣 1 心)">
-            <span class="text-slate-400 text-[11px]">生命</span>
-            <span id="lives-display" class="tracking-widest text-sm text-[#EB4203]">❤️❤️❤️</span>
-          </div>
-
-          <!-- Stats Pill -->
+          <!-- Mobile Compact Stats Pill -->
           <div
-            class="flex items-center space-x-2 bg-slate-900/90 border border-slate-800/90 px-3 py-1.5 rounded-xl text-xs font-semibold">
-            <span class="flex items-center text-[#FF9C5F]" title="連勝">
-              🔥 <span id="streak-count" class="ml-1 font-mono">0</span>
-            </span>
-            <span class="flex items-center text-[#00CEC8]" title="最高連勝">
-              🏆 <span id="best-streak-count" class="ml-1 font-mono">0</span>
+            class="flex md:hidden items-center space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-2 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap flex-shrink-0">
+            <span id="lives-display-mobile" class="tracking-widest text-xs whitespace-nowrap inline-block">❤️❤️❤️</span>
+            <span class="text-slate-700">|</span>
+            <span class="flex items-center text-[#FF9C5F] whitespace-nowrap">
+              🔥 <span id="streak-count-mobile" class="ml-0.5 font-mono">0</span>
             </span>
             <span class="text-slate-700">|</span>
-            <span class="flex items-center text-[#FCEFC3]" title="總分">
-              ⭐️ <span id="score-count" class="ml-1 font-mono">0</span>
+            <span class="flex items-center text-[#00CEC8] whitespace-nowrap">
+              🏆 <span id="best-streak-count-mobile" class="ml-0.5 font-mono">0</span>
+            </span>
+            <span class="text-slate-700">|</span>
+            <span class="flex items-center text-[#FCEFC3] whitespace-nowrap">
+              ⭐️ <span id="score-count-mobile" class="ml-0.5 font-mono">0</span>
             </span>
           </div>
-        </div>
 
-        <!-- Mobile Compact Stats Pill -->
-        <div
-          class="flex md:hidden items-center space-x-2 bg-slate-900/90 border border-slate-800/90 px-2.5 py-1 rounded-xl text-[11px] font-semibold">
-          <span id="lives-display-mobile" class="tracking-widest text-xs">❤️❤️❤️</span>
-          <span class="text-slate-700">|</span>
-          <span class="flex items-center text-[#FF9C5F]">
-            🔥 <span id="streak-count-mobile" class="ml-0.5 font-mono">0</span>
-          </span>
-          <span class="text-slate-700">|</span>
-          <span class="flex items-center text-[#00CEC8]">
-            🏆 <span id="best-streak-count-mobile" class="ml-0.5 font-mono">0</span>
-          </span>
-          <span class="text-slate-700">|</span>
-          <span class="flex items-center text-[#FCEFC3]">
-            ⭐️ <span id="score-count-mobile" class="ml-0.5 font-mono">0</span>
-          </span>
+          <!-- Language Switcher Toggle Button -->
+          <button id="btn-lang-toggle"
+            class="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-[#00CEC8] text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center space-x-1 flex-shrink-0 shadow-sm whitespace-nowrap"
+            title="切換語言 / Switch Language">
+            <i data-lucide="globe" class="w-3.5 h-3.5 text-[#00CEC8]"></i>
+            <span id="lang-toggle-text">EN</span>
+          </button>
         </div>
       </div>
 
@@ -165,25 +176,25 @@
       <div class="flex md:hidden items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-800/50">
         <!-- Mode Switcher Mobile -->
         <div class="bg-slate-900/90 border border-slate-800 p-0.5 rounded-lg flex items-center text-[11px] flex-1">
-          <button data-mode="choice"
+          <button data-mode="choice" data-i18n="mode_choice"
             class="mode-toggle-btn flex-1 py-1 rounded-md bg-slate-700 text-white font-medium text-center transition-colors">
-            四選一
+            選擇題
           </button>
           <button data-mode="search"
             class="mode-toggle-btn flex-1 py-1 rounded-md text-slate-400 font-medium hover:text-white text-center transition-colors">
-            輸入歌名 <span class="text-[#00CEC8] font-bold text-[10px]">+50%</span>
+            <span data-i18n="mode_search">輸入歌名</span> <span class="text-[#00CEC8] font-bold text-[10px]">+50%</span>
           </button>
         </div>
 
         <!-- Difficulty Switcher Mobile -->
         <div class="bg-slate-900/90 border border-slate-800 p-0.5 rounded-lg flex items-center text-[11px] flex-1">
-          <button data-diff="normal"
+          <button data-diff="normal" data-i18n="diff_normal"
             class="diff-toggle-btn flex-1 py-1 rounded-md bg-slate-700 text-white font-semibold text-center transition-all">
             一般
           </button>
           <button data-diff="hell"
             class="diff-toggle-btn flex-1 py-1 rounded-md text-slate-400 font-bold hover:text-[#FF9C5F] text-center transition-all">
-            🔥 挑戰 <span class="text-[#FF9C5F] font-bold text-[10px]">2x</span>
+            <span data-i18n="diff_hell">🔥 挑戰</span> <span class="text-[#FF9C5F] font-bold text-[10px]">2x</span>
           </button>
         </div>
       </div>
@@ -191,23 +202,23 @@
   </header>
 
   <!-- Category Nav Chips -->
-  <nav class="max-w-4xl mx-auto w-full px-3.5 sm:px-4 pt-3 pb-2">
+  <nav class="max-w-5xl xl:max-w-6xl mx-auto w-full px-3.5 sm:px-4 pt-3 pb-2">
     <div class="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
       <button data-category="default"
         class="cat-btn px-3 sm:px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] shadow-md shadow-[#EB4203]/25 whitespace-nowrap transition-all font-bold flex items-center">
-        <i data-lucide="flame" class="w-3.5 h-3.5 mr-1 text-[#FCEFC3]"></i> 預設
+        <i data-lucide="flame" class="w-3.5 h-3.5 mr-1 text-[#FCEFC3]"></i> <span data-i18n="cat_default">預設</span>
       </button>
       <button data-category="custom"
         class="cat-btn hidden px-3 sm:px-3.5 py-2 rounded-xl bg-slate-800/90 text-slate-300 hover:bg-slate-700 whitespace-nowrap transition-all font-bold flex items-center">
-        <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 自訂題庫
+        <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> <span data-i18n="cat_custom">自訂題庫</span>
       </button>
       <button id="btn-open-custom"
         class="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-white whitespace-nowrap transition-all flex items-center">
-        <i data-lucide="plus" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 匯入/管理
+        <i data-lucide="plus" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> <span data-i18n="import_manage">匯入/管理</span>
       </button>
       <button id="btn-copy-challenge-url"
         class="px-3 py-2 rounded-xl bg-[#00CEC8]/15 border border-[#00CEC8]/40 text-[#00CEC8] hover:bg-[#00CEC8]/25 whitespace-nowrap transition-all flex items-center font-bold">
-        <i data-lucide="link" class="w-3.5 h-3.5 mr-1"></i> 複製挑戰連結
+        <i data-lucide="link" class="w-3.5 h-3.5 mr-1"></i> <span data-i18n="copy_challenge">複製挑戰連結</span>
       </button>
     </div>
 
@@ -216,7 +227,7 @@
       <div class="flex items-center space-x-2 sm:space-x-2.5 overflow-hidden">
         <span class="text-slate-400 font-medium flex items-center flex-shrink-0 text-[11px] sm:text-xs">
           <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-[#00CEC8] mr-1"></i>
-          進度：
+          <span data-i18n="round_progress">進度</span>：
         </span>
         <div class="w-20 sm:w-32 md:w-40 bg-slate-800 rounded-full h-2 overflow-hidden flex-shrink-0">
           <div id="progress-bar-fill"
@@ -226,13 +237,13 @@
       </div>
       <button id="btn-reset-playlist-progress"
         class="text-[11px] text-slate-500 hover:text-[#FF9C5F] flex items-center transition-colors flex-shrink-0 ml-2">
-        <i data-lucide="rotate-ccw" class="w-3 h-3 mr-1"></i> 重設
+        <i data-lucide="rotate-ccw" class="w-3 h-3 mr-1"></i> <span data-i18n="reset">重設</span>
       </button>
     </div>
   </nav>
 
   <!-- Main Game Stage: Mobile Ergonomics Optimized -->
-  <main class="flex-1 max-w-4xl mx-auto w-full px-3.5 sm:px-4 py-2 sm:py-4 flex flex-col justify-center pb-28 sm:pb-12">
+  <main class="flex-1 max-w-5xl xl:max-w-6xl mx-auto w-full px-3.5 sm:px-4 py-2 sm:py-4 flex flex-col justify-center pb-28 sm:pb-12">
 
     <!-- Match Scorecard & Social Summary (Replaces simple completed card) -->
     <div id="playlist-completed-card"
@@ -250,7 +261,7 @@
         <h2 id="scorecard-playlist-title" class="text-xl sm:text-2xl font-black text-[#FCEFC3] tracking-tight truncate">
           你的歌來了
         </h2>
-        <p id="completed-card-desc" class="text-xs text-slate-400 mt-0.5">全曲庫逐首挑戰戰績看板</p>
+        <p id="completed-card-desc" data-i18n="scorecard_summary" class="text-xs text-slate-400 mt-0.5">全曲庫逐首挑戰戰績看板</p>
       </div>
 
       <!-- Rank & Score Banner -->
@@ -263,10 +274,16 @@
             <span id="scorecard-rank-title" class="text-[9px] sm:text-[10px] font-bold mt-0.5 text-[#FCEFC3]/90">神之耳</span>
           </div>
           <div>
-            <p class="text-[10px] sm:text-[11px] text-slate-400">總得分</p>
+            <p data-i18n="total_score" class="text-[10px] sm:text-[11px] text-slate-400">總得分</p>
             <p id="scorecard-total-score" class="text-2xl sm:text-3xl font-black text-[#00CEC8] font-mono leading-tight">0</p>
             <div class="flex items-center space-x-1.5 text-xs text-slate-300 mt-0.5">
               <span id="scorecard-hearts-display" class="tracking-widest text-xs sm:text-sm text-[#EB4203]">❤️❤️❤️</span>
+            </div>
+            <!-- Percentile Badge (Normal Distribution CDF: 超越 X% 的玩家) -->
+            <div class="mt-1.5 flex items-center">
+              <span id="scorecard-percentile-badge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-[#00CEC8]/15 text-[#00CEC8] border border-[#00CEC8]/30">
+                📊 超越 50% 的玩家
+              </span>
             </div>
           </div>
         </div>
@@ -274,11 +291,11 @@
         <!-- Quick Stats Column -->
         <div class="text-right space-y-1 text-xs">
           <div>
-            <span class="text-slate-500 text-[10px]">答對率</span>
+            <span data-i18n="accuracy" class="text-slate-500 text-[10px]">答對率</span>
             <p id="scorecard-accuracy-rate" class="font-mono font-bold text-[#FCEFC3]">0 / 0</p>
           </div>
           <div>
-            <span class="text-slate-500 text-[10px]">秒答 (0.5s)</span>
+            <span data-i18n="instant_guess" class="text-slate-500 text-[10px]">秒答 (0.5s)</span>
             <p id="scorecard-godly-count" class="font-mono font-bold text-[#FF9C5F]">0 首</p>
           </div>
         </div>
@@ -287,8 +304,8 @@
       <!-- Track-by-Track List -->
       <div class="relative z-10 mb-4">
         <div class="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2 px-1">
-          <span>逐首答題明細 (<span id="scorecard-track-count">0</span> 首)</span>
-          <span class="text-[10px] text-slate-500">結果 · 秒數 · 得分</span>
+          <span><span data-i18n="tracks_detail">逐首答題明細</span> (<span id="scorecard-track-count">0</span> 首)</span>
+          <span data-i18n="results_header" class="text-[10px] text-slate-500">結果 · 秒數 · 得分</span>
         </div>
         <div id="scorecard-track-list" class="max-h-48 sm:max-h-56 overflow-y-auto space-y-1.5 pr-1">
           <!-- Populated dynamically -->
@@ -301,18 +318,18 @@
           <button id="btn-save-scorecard-img"
             class="w-full py-3 rounded-xl bg-gradient-to-r from-[#00CEC8] to-[#00A8A3] hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-[#00CEC8]/25 flex items-center justify-center transition-all active:scale-95">
             <i data-lucide="camera" class="w-4 h-4 mr-1.5 text-slate-950"></i>
-            📸 儲存戰績圖片
+            <span data-i18n="save_scorecard_img">戰績截圖</span>
           </button>
           <button id="btn-copy-scorecard"
             class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 flex items-center justify-center transition-all active:scale-95">
             <i data-lucide="share-2" class="w-4 h-4 mr-1.5 text-[#00CEC8]"></i>
-            複製純文字戰績
+            <span data-i18n="copy_scorecard_text">複製戰績</span>
           </button>
         </div>
         <button id="btn-replay-playlist"
           class="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] hover:brightness-110 text-[#FCEFC3] font-black text-xs sm:text-sm shadow-lg shadow-[#EB4203]/25 flex items-center justify-center transition-all active:scale-95">
           <i data-lucide="rotate-ccw" class="w-4 h-4 mr-1.5"></i>
-          重新挑戰歌單
+          <span data-i18n="play_again">再玩一輪</span>
         </button>
       </div>
     </div>
@@ -331,7 +348,7 @@
         <div id="audio-status-pill"
           class="inline-flex items-center space-x-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-[11px] sm:text-xs font-semibold text-slate-300 mb-3 sm:mb-4 shadow-inner transition-all">
           <span id="audio-status-dot" class="w-2.5 h-2.5 rounded-full bg-[#00CEC8]"></span>
-          <span id="audio-status-text">準備就緒</span>
+          <span id="audio-status-text" data-i18n="status_ready">準備就緒</span>
         </div>
 
         <!-- Vinyl Record Visual (Responsive Scaling for Mobile Viewport) -->
@@ -386,27 +403,27 @@
           <button id="btn-play-snippet"
             class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] hover:from-[#d63c03] hover:to-[#f58d4e] active:scale-[0.98] text-[#FCEFC3] font-extrabold text-base shadow-xl shadow-[#EB4203]/25 flex items-center justify-center transition-all">
             <i data-lucide="play" class="w-5 h-5 mr-2 fill-current"></i>
-            播放
+            <span data-i18n="play">播放</span>
           </button>
 
           <!-- Replay Button -->
           <button id="btn-replay-snippet"
             class="hidden w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 font-bold text-sm border border-slate-700 transition-all flex items-center justify-center">
             <i data-lucide="rotate-ccw" class="w-4 h-4 mr-2"></i>
-            再聽一次
+            <span data-i18n="replay">再聽一次</span>
           </button>
 
           <!-- Unlock Next Tier Button -->
           <button id="btn-next-tier"
             class="hidden w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-[#FF9C5F]/20 hover:bg-[#FF9C5F]/30 active:scale-[0.98] text-[#FF9C5F] font-bold text-sm border border-[#FF9C5F]/40 transition-all flex items-center justify-center">
             <i data-lucide="fast-forward" class="w-4 h-4 mr-1"></i>
-            聽更多
+            <span data-i18n="more">聽更多</span>
           </button>
 
           <!-- Give Up Button -->
           <button id="btn-give-up"
             class="w-full sm:w-auto px-4 py-3 sm:py-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-300 text-xs font-semibold transition-all">
-            看答案
+            <span data-i18n="give_up">看答案</span>
           </button>
         </div>
 
@@ -434,11 +451,11 @@
           <button id="btn-share"
             class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center justify-center transition-all active:scale-95">
             <i data-lucide="share-2" class="w-3.5 h-3.5 mr-1.5 text-[#00CEC8]"></i>
-            分享成績
+            <span data-i18n="share_result">分享成績</span>
           </button>
           <button id="btn-next-song"
             class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] font-black text-sm shadow-lg shadow-[#EB4203]/30 flex items-center justify-center transition-all active:scale-95">
-            下一題 <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
+            <span data-i18n="next_song">下一題</span> <i data-lucide="arrow-right" class="w-4 h-4 ml-1.5"></i>
           </button>
         </div>
       </div>
@@ -446,18 +463,18 @@
       <!-- Start Offset Fine-Tuning Toolbar -->
       <div class="mt-3 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div class="flex items-center space-x-1.5 sm:space-x-2 text-slate-400 text-[11px] sm:text-xs">
-          <span>⏱️ 前奏微調：從第</span>
+          <span data-i18n="offset_prefix">⏱️ 前奏微調：從第</span>
           <input id="reveal-offset-input" type="number" step="0.5" min="0" max="60" value="0"
             class="w-12 sm:w-14 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-center font-mono text-xs text-[#FCEFC3] focus:border-[#EB4203] outline-none">
-          <span>秒發聲</span>
-          <button id="btn-save-offset"
+          <span data-i18n="seconds_unit">秒發聲</span>
+          <button id="btn-save-offset" data-i18n="save"
             class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[#00CEC8] font-semibold transition-colors text-[11px]">
             儲存
           </button>
         </div>
         <button id="btn-share-with-offsets"
           class="text-xs text-[#FF9C5F] hover:text-[#FCEFC3] font-semibold flex items-center transition-colors">
-          <i data-lucide="share-2" class="w-3.5 h-3.5 mr-1"></i> 分享此題庫設定 (含秒數)
+          <i data-lucide="share-2" class="w-3.5 h-3.5 mr-1"></i> <span data-i18n="share_offsets">分享此題庫設定 (含秒數)</span>
         </button>
       </div>
     </div>
@@ -471,9 +488,9 @@
     <div id="search-container" class="hidden relative max-w-xl mx-auto w-full mb-4 sm:mb-6">
       <div class="flex items-center justify-between mb-2 px-1">
         <span class="text-[11px] text-slate-400 font-medium flex items-center">
-          <i data-lucide="keyboard" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> 輸入模式
+          <i data-lucide="keyboard" class="w-3.5 h-3.5 mr-1 text-[#00CEC8]"></i> <span data-i18n="input_mode">輸入模式</span>
         </span>
-        <span
+        <span data-i18n="bonus_badge"
           class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#00CEC8]/15 text-[#00CEC8] border border-[#00CEC8]/30">
           獎勵 1.5x
         </span>
@@ -481,7 +498,7 @@
       <div class="relative">
         <i data-lucide="search"
           class="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-        <input type="text" id="search-input" placeholder="搜尋歌曲或歌手，按 Enter 送出"
+        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="搜尋歌曲或歌手，按 Enter 送出"
           class="w-full pl-12 pr-4 py-3 sm:py-3.5 rounded-2xl bg-slate-900 border border-slate-700/80 text-[#FCEFC3] placeholder-slate-500 focus:outline-none focus:border-[#00CEC8] focus:ring-2 focus:ring-[#00CEC8]/20 text-sm" />
       </div>
       <!-- Autocomplete Dropdown -->
@@ -503,8 +520,8 @@
             <i data-lucide="list-music" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="font-extrabold text-sm sm:text-base text-[#FCEFC3]">自訂歌單</h3>
-            <p class="text-[10px] sm:text-[11px] text-slate-400">貼上 YouTube Music 連結建立專屬猜歌考題</p>
+            <h3 data-i18n="custom_modal_title" class="font-extrabold text-sm sm:text-base text-[#FCEFC3]">自訂歌單</h3>
+            <p data-i18n="custom_modal_subtitle" class="text-[10px] sm:text-[11px] text-slate-400">貼上 YouTube Music 連結建立專屬猜歌考題</p>
           </div>
         </div>
         <button id="btn-close-custom" class="text-slate-400 hover:text-white p-1 rounded-lg">
@@ -517,8 +534,8 @@
         class="mb-4 sm:mb-5 p-3 rounded-2xl bg-slate-900/90 border border-[#00CEC8]/30 text-xs text-slate-300 flex items-start space-x-2.5">
         <i data-lucide="sparkles" class="w-4 h-4 text-[#00CEC8] flex-shrink-0 mt-0.5"></i>
         <div class="leading-relaxed text-[11px] sm:text-xs">
-          <p class="font-bold text-[#00CEC8] mb-0.5">推薦使用 YouTube Music 連結</p>
-          <p class="text-slate-400">
+          <p data-i18n="ytm_tip_title" class="font-bold text-[#00CEC8] mb-0.5">推薦使用 YouTube Music 連結</p>
+          <p data-i18n-html="ytm_tip_desc" class="text-slate-400">
             官方 MV 常有前奏無聲期；而 <strong class="text-[#FCEFC3]">YouTube Music</strong> 為純音檔，猜歌體驗較佳
           </p>
         </div>
@@ -529,39 +546,40 @@
         <div class="flex items-center justify-between mb-2">
           <label class="text-xs font-extrabold text-white flex items-center">
             <i data-lucide="folder-down" class="w-3.5 h-3.5 text-[#EB4203] mr-1.5"></i>
-            匯入播放清單
+            <span data-i18n="import_playlist_title">匯入播放清單</span>
           </label>
         </div>
         <div class="flex flex-col sm:flex-row gap-2 mb-2">
-          <input type="text" id="playlist-url-input" placeholder="https://music.youtube.com/playlist?list=PL..."
+          <input type="text" id="playlist-url-input" data-i18n-placeholder="playlist_url_placeholder" placeholder="https://music.youtube.com/playlist?list=PL..."
             class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-[#FCEFC3] placeholder-slate-500 focus:outline-none focus:border-[#00CEC8]" />
           <button id="btn-import-playlist"
             class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#EB4203] to-[#FF9C5F] text-[#FCEFC3] font-extrabold text-xs whitespace-nowrap shadow-md transition-all flex items-center justify-center active:scale-95">
-            <i data-lucide="download-cloud" class="w-3.5 h-3.5 mr-1"></i> 匯入歌單
+            <i data-lucide="download-cloud" class="w-3.5 h-3.5 mr-1"></i> <span data-i18n="btn_import">匯入歌單</span>
           </button>
         </div>
-        <p class="text-[10px] text-slate-500">支援 YouTube Music 或一般 YouTube 公開播放清單網址</p>
+        <p data-i18n="playlist_support_tip" class="text-[10px] text-slate-500">支援 YouTube Music 或一般 YouTube 公開播放清單網址</p>
       </div>
 
       <!-- Option 2: Add Single Song -->
       <div class="mb-4">
         <label class="text-xs font-bold text-slate-300 mb-1.5 block flex items-center">
           <i data-lucide="music" class="w-3.5 h-3.5 text-slate-400 mr-1.5"></i>
-          或是單曲新增
+          <span data-i18n="add_single_title">或是單曲新增</span>
         </label>
         <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
-          <input type="text" id="custom-url-input" placeholder="貼上 YouTube / YT Music 單曲網址..."
+          <input type="text" id="custom-url-input" data-i18n-placeholder="song_url_placeholder" placeholder="貼上 YouTube / YT Music 單曲網址..."
             class="sm:col-span-8 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-[#FCEFC3] placeholder-slate-500 focus:outline-none focus:border-[#00CEC8]" />
           <div
             class="sm:col-span-2 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 sm:py-0">
-            <span class="text-[10px] text-slate-400 mr-1">秒:</span>
+            <span data-i18n="seconds_label" class="text-[10px] text-slate-400 mr-1">秒:</span>
             <input type="number" id="custom-start-offset" value="0" min="0"
               class="w-full bg-transparent text-xs text-[#FCEFC3] focus:outline-none font-mono text-center"
+              data-i18n-title="offset_tooltip"
               title="若為 MV 片頭過長，可手動設定從第幾秒開始聽" />
           </div>
           <button id="btn-add-custom"
             class="sm:col-span-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#00CEC8] font-bold text-xs whitespace-nowrap border border-slate-700 transition-colors flex items-center justify-center active:scale-95">
-            + 單曲
+            <span data-i18n="btn_add_song">+ 單曲</span>
           </button>
         </div>
       </div>
@@ -573,9 +591,9 @@
           <div class="flex items-center space-x-2">
             <button id="btn-share-custom-challenge"
               class="hidden text-[11px] text-[#00CEC8] hover:text-[#FCEFC3] font-bold flex items-center">
-              <i data-lucide="share-2" class="w-3 h-3 mr-1"></i> 複製挑戰連結
+              <i data-lucide="share-2" class="w-3 h-3 mr-1"></i> <span data-i18n="copy_challenge">複製挑戰連結</span>
             </button>
-            <button id="btn-clear-custom" class="text-[11px] text-slate-500 hover:text-[#EB4203]">
+            <button id="btn-clear-custom" data-i18n="clear_all" class="text-[11px] text-slate-500 hover:text-[#EB4203]">
               清空
             </button>
           </div>
@@ -592,10 +610,11 @@
     <div id="yt-player-target"></div>
   </div>
 
-  <!-- Footer -->
-  <footer class="border-t border-slate-800/50 py-3 sm:py-4 text-center text-[11px] sm:text-xs text-slate-500">
-    <p>YouTube Music 0.5s Guesser </p>
-  </footer>
+  <!-- Toast Notification Container -->
+  <div id="toast-notification"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-[#00CEC8]/50 text-[#FCEFC3] text-xs sm:text-sm font-bold shadow-2xl backdrop-blur-md flex items-center gap-2 pointer-events-none transition-all duration-300 opacity-0 translate-y-4">
+    <span id="toast-message">✨ 已複製至剪貼簿！</span>
+  </div>
 
   <!-- App Script (ES Module) -->
   <script type="module" src="js/app.js"></script>
