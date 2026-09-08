@@ -222,14 +222,80 @@ const INVIDIOUS_INSTANCES = [
   'https://invidious.private.coffee'
 ];
 
-/**
- * Fetch tracks from a YouTube / YouTube Music playlist.
- * Defaults to Traditional Chinese (zh-TW) when available.
- */
-export async function fetchPlaylistSongs(playlistId) {
-  const cleanId = extractPlaylistId(playlistId) || playlistId;
+// In-memory runtime cache
+const playlistMemoryCache = new Map();
 
-  // 1. Try local backend API with native YouTube Music Chinese resolver (serve.py)
+/**
+ * Checks if a string looks purely ASCII/English (i.e. potentially auto-translated by overseas nodes)
+ */
+function isAsciiOnly(str) {
+  if (!str) return true;
+  // If contains Han characters, it's Chinese
+  return !/[\u4e00-\u9fa5]/.test(str);
+}
+
+/**
+ * Normalizes song list with YouTube official oEmbed in client's local locale (zh-TW)
+ * Only calls oEmbed if the title appears to be translated into English
+ */
+async function normalizeSongsWithLocale(songs) {
+  if (!Array.isArray(songs) || songs.length === 0) return songs;
+  
+  // Find songs that might have been English-translated
+  const tasks = songs.map(async (song) => {
+    if (isAsciiOnly(song.title) && song.id) {
+      try {
+        const info = await fetchVideoInfo(song.id, song.start || 0);
+        if (info && info.title && !isAsciiOnly(info.title)) {
+          return {
+            ...song,
+            title: info.title,
+            artist: (info.artist || song.artist || '').replace(/ - Topic$/i, '')
+          };
+        }
+      } catch (e) {
+        // Keep original if oEmbed fails
+      }
+    }
+    return song;
+  });
+
+  return Promise.all(tasks);
+}
+
+/**
+ * Fetch tracks from a YouTube / YouTube Music playlist with persistent cache and locale normalization.
+ * 1. Checks LocalStorage cache (instant 0ms load!)
+ * 2. Fetches via Cloudflare Worker (fastest, authentic zh-TW)
+ * 3. Fallbacks to Invidious + oEmbed Chinese title repair
+ */
+export async function fetchPlaylistSongs(playlistId, forceRefresh = false) {
+  const cleanId = extractPlaylistId(playlistId) || playlistId;
+  const cacheKey = `yt_cache_playlist_${cleanId}`;
+
+  // 1. Check Memory Cache & LocalStorage Cache (0ms instant open!)
+  if (!forceRefresh) {
+    if (playlistMemoryCache.has(cleanId)) {
+      return playlistMemoryCache.get(cleanId);
+    }
+    try {
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr);
+        // Valid if cached within 24 hours
+        if (cached && cached.songs && cached.songs.length > 0 && (Date.now() - (cached.timestamp || 0) < 86400000)) {
+          playlistMemoryCache.set(cleanId, cached.data);
+          return cached.data;
+        }
+      }
+    } catch (e) {
+      console.warn('Playlist cache read error:', e);
+    }
+  }
+
+  let result = null;
+
+  // 2. Try local backend API with native YouTube Music Chinese resolver (serve.py)
   try {
     const res = await fetch(`/api/playlist?list=${encodeURIComponent(cleanId)}&hl=zh-TW`);
     if (res.ok) {
@@ -239,70 +305,104 @@ export async function fetchPlaylistSongs(playlistId) {
           ...s,
           artist: (s.artist || '').replace(/ - Topic$/i, '')
         }));
-        return data;
+        result = data;
       }
     }
   } catch (err) {
-    // Local API not running, proceed to cloud edge worker or mirror fetchers
+    // Local API not running, proceed to Cloudflare Worker proxy
   }
 
-  // 2. Try configured Cloudflare Worker Proxy (for GitHub Pages serverless deployment)
-  const workerProxy = WORKER_PROXY_URL || localStorage.getItem('yt_guesser_worker_proxy') || window.YTM_WORKER_PROXY;
-  if (workerProxy) {
-    try {
-      const proxyUrl = `${workerProxy.replace(/\/$/, '')}/?list=${encodeURIComponent(cleanId)}`;
-      const res = await fetch(proxyUrl);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.songs && data.songs.length > 0) {
-          data.songs = data.songs.map(s => ({
-            ...s,
-            artist: (s.artist || '').replace(/ - Topic$/i, '')
-          }));
-          return data;
+  // 3. Try Cloudflare Worker Proxy (Taiwan/Hong Kong edge, WEB_REMIX zh-TW)
+  if (!result) {
+    const workerProxy = WORKER_PROXY_URL || localStorage.getItem('yt_guesser_worker_proxy') || window.YTM_WORKER_PROXY;
+    if (workerProxy) {
+      try {
+        const proxyUrl = `${workerProxy.replace(/\/$/, '')}/?list=${encodeURIComponent(cleanId)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.songs && data.songs.length > 0) {
+            data.songs = data.songs.map(s => ({
+              ...s,
+              artist: (s.artist || '').replace(/ - Topic$/i, '')
+            }));
+            result = data;
+          }
         }
+      } catch (err) {
+        console.warn('Worker proxy fetch failed:', err);
       }
-    } catch (err) {
-      console.warn('Worker proxy fetch failed:', err);
     }
   }
 
-  // 3. Client-Side Serverless Fetcher: Query Invidious API mirrors with zh-TW
-  for (const instance of INVIDIOUS_INSTANCES) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const url = `${instance}/api/v1/playlists/${encodeURIComponent(playlistId)}?hl=zh-TW&region=TW`;
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
+  // 4. Fallback: Invidious mirrors + oEmbed zh-TW normalization
+  if (!result) {
+    for (const instance of INVIDIOUS_INSTANCES) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const url = `${instance}/api/v1/playlists/${encodeURIComponent(cleanId)}?hl=zh-TW&region=TW`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const data = await res.json();
-        const videos = data.videos || data.relatedStreams || [];
-        if (videos.length > 0) {
-          const songs = videos.slice(0, 35).map(v => {
-            const author = (v.author || v.uploaderName || 'YouTube Music').replace(/ - Topic$/i, '');
-            return {
-              id: v.videoId,
-              title: v.title || '未知曲目',
-              artist: author,
-              start: 0
+        if (res.ok) {
+          const data = await res.json();
+          const videos = data.videos || data.relatedStreams || [];
+          if (videos.length > 0) {
+            let songs = videos.slice(0, 35).map(v => {
+              const author = (v.author || v.uploaderName || 'YouTube Music').replace(/ - Topic$/i, '');
+              return {
+                id: v.videoId,
+                title: v.title || '未知曲目',
+                artist: author,
+                start: 0
+              };
+            });
+
+            // Double check: if Invidious gave English titles, normalize with user's local oEmbed!
+            songs = await normalizeSongsWithLocale(songs);
+
+            result = {
+              success: true,
+              title: data.title || '自訂歌單',
+              playlist_id: cleanId,
+              count: songs.length,
+              songs: songs
             };
-          });
-
-          return {
-            success: true,
-            title: data.title || '匯入歌單',
-            playlist_id: playlistId,
-            count: songs.length,
-            songs: songs
-          };
+            break;
+          }
         }
+      } catch (e) {
+        console.warn(`Mirror ${instance} failed, trying next...`, e.message);
       }
-    } catch (e) {
-      console.warn(`Mirror ${instance} failed, trying next...`, e.message);
     }
   }
+
+  if (result && result.songs && result.songs.length > 0) {
+    // Save to Memory & LocalStorage Cache
+    playlistMemoryCache.set(cleanId, result);
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        data: result
+      }));
+    } catch (e) {
+      console.warn('Playlist cache write error:', e);
+    }
+    return result;
+  }
+
+  // If network failed but we have expired local cache, use it as emergency offline fallback!
+  try {
+    const expiredStr = localStorage.getItem(cacheKey);
+    if (expiredStr) {
+      const expired = JSON.parse(expiredStr);
+      if (expired && expired.data && expired.data.songs) {
+        console.info('Using stale playlist cache due to network failure');
+        return expired.data;
+      }
+    }
+  } catch (e) {}
 
   throw new Error('無法直接解析此播放清單，請確認：\n1. 歌單是否設為「公開」或「不公開」\n2. 網址是否正確 (需包含 list=PL...)');
 }
