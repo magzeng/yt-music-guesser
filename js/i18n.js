@@ -62,8 +62,8 @@ export function calculatePercentile(score, maxScore, isGodlyMaster = false) {
  */
 export const translations = {
   'zh-TW': {
-    app_title: '你的歌來了',
-    app_subtitle: '零秒猜歌',
+    app_title: '零秒猜歌',
+    app_subtitle: '極速音樂挑戰',
     mode_choice: '選擇題',
     mode_search: '輸入歌名',
     diff_normal: '一般',
@@ -154,7 +154,7 @@ export const translations = {
     rank_b: '再接再厲',
     rank_c: '專心吃水餃',
     lang_btn: 'EN',
-    wordle_title: '🎵 你的歌來了 0.5s Guesser',
+    wordle_title: '🎵 零秒猜歌 0.5s Guesser',
     wordle_rating: '🏆 評級：{title} ({score} 分)',
     wordle_percent: '📊 超越 {percent}% 的玩家',
     wordle_challenge: '🔗 來挑戰我的紀錄：https://magzeng.github.io/yt-music-guesser/',
@@ -169,7 +169,7 @@ export const translations = {
   },
   'en': {
     app_title: 'SongGuesser',
-    app_subtitle: 'Sub-second Trivia',
+    app_subtitle: 'Sub-second Music Trivia',
     mode_choice: 'Choice',
     mode_search: 'Type Name',
     diff_normal: 'Normal',
@@ -259,7 +259,7 @@ export const translations = {
     rank_a: 'Pretty Good',
     rank_b: 'Keep Trying',
     rank_c: 'Snack Eater',
-    lang_btn: '繁中',
+    lang_btn: '中文',
     wordle_title: '🎵 SongGuesser 0.5s Guesser',
     wordle_rating: '🏆 Rank: {title} ({score} pts)',
     wordle_percent: '📊 Beat {percent}% of players',
@@ -361,6 +361,10 @@ export class I18nManager {
     if (langToggleText) {
       langToggleText.textContent = this.t('lang_btn');
     }
+
+    document.title = this.currentLang === 'en'
+      ? 'SongGuesser | Sub-second Music Trivia'
+      : '零秒猜歌 | 極速音樂挑戰 - SongGuesser';
   }
 }
 

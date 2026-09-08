@@ -4,7 +4,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title> 你的歌來了 | 零秒猜歌 </title>
+  <title>零秒猜歌 | 極速音樂挑戰 - SongGuesser</title>
+
+  <!-- SEO Primary Meta Tags -->
+  <meta name="title" content="零秒猜歌 | 極速音樂挑戰 - SongGuesser">
+  <meta name="description" content="零秒猜歌 (SongGuesser) - 最刺激的極速音樂猜歌遊戲！從 0.5 秒或 0.15 秒前奏盲聽猜歌名，支援匯入 YouTube Music 播放清單建立專屬考題。Sub-second Music Trivia.">
+  <meta name="keywords" content="零秒猜歌, 猜歌, 猜歌遊戲, 聽歌猜歌名, 聽前奏猜歌, YouTube Music 猜歌, SongGuesser, Music Guesser, Music Trivia, Sub-second Music Trivia">
+  <meta name="author" content="SongGuesser Team">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#080c14">
+  <link rel="canonical" href="https://magzeng.github.io/yt-music-guesser/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://magzeng.github.io/yt-music-guesser/">
+  <meta property="og:title" content="零秒猜歌 | 極速音樂挑戰 - SongGuesser">
+  <meta property="og:description" content="只聽 0.5 秒你能猜中這首歌嗎？最刺激的純音檔猜歌挑戰，支援匯入 YouTube Music 歌單！">
+  <meta property="og:site_name" content="零秒猜歌 SongGuesser">
+  <meta property="og:locale" content="zh_TW">
+  <meta property="og:locale:alternate" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://magzeng.github.io/yt-music-guesser/">
+  <meta property="twitter:title" content="零秒猜歌 | 極速音樂挑戰 - SongGuesser">
+  <meta property="twitter:description" content="只聽 0.5 秒你能猜中這首歌嗎？最刺激的極速音樂猜歌挑戰，支援匯入自訂歌單！">
+
+  <!-- Favicon (SVG Headphones) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EB4203' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3'/></svg>">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -88,9 +115,9 @@
           <div class="flex flex-col">
             <h1 data-i18n="app_title"
               class="font-extrabold text-sm sm:text-base md:text-lg tracking-tight bg-gradient-to-r from-[#FCEFC3] via-white to-[#FF9C5F] bg-clip-text text-transparent leading-snug whitespace-nowrap">
-              你的歌來了
+              零秒猜歌
             </h1>
-            <p data-i18n="app_subtitle" class="text-[9px] sm:text-[10px] text-slate-400 whitespace-nowrap">零秒猜歌</p>
+            <p data-i18n="app_subtitle" class="text-[9px] sm:text-[10px] text-slate-400 whitespace-nowrap">極速音樂挑戰</p>
           </div>
         </div>
 
@@ -146,7 +173,7 @@
 
           <!-- Mobile Compact Stats Pill -->
           <div
-            class="flex md:hidden items-center space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-2 py-1 rounded-xl text-[11px] font-semibold whitespace-nowrap flex-shrink-0">
+            class="flex md:hidden items-center space-x-1 sm:space-x-1.5 bg-slate-900/90 border border-slate-800/90 px-1.5 sm:px-2 py-1 rounded-xl text-[10px] sm:text-[11px] font-semibold whitespace-nowrap flex-shrink-0">
             <span id="lives-display-mobile" class="tracking-widest text-xs whitespace-nowrap inline-block">❤️❤️❤️</span>
             <span class="text-slate-700">|</span>
             <span class="flex items-center text-[#FF9C5F] whitespace-nowrap">
@@ -164,7 +191,7 @@
 
           <!-- Language Switcher Toggle Button -->
           <button id="btn-lang-toggle"
-            class="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-[#00CEC8] text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center space-x-1 flex-shrink-0 shadow-sm whitespace-nowrap"
+            class="px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-[#00CEC8] text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white transition-all flex items-center space-x-1 flex-shrink-0 shadow-sm whitespace-nowrap"
             title="切換語言 / Switch Language">
             <i data-lucide="globe" class="w-3.5 h-3.5 text-[#00CEC8]"></i>
             <span id="lang-toggle-text">EN</span>
@@ -259,7 +286,7 @@
           <span id="scorecard-status-text">挑戰成功</span>
         </div>
         <h2 id="scorecard-playlist-title" class="text-xl sm:text-2xl font-black text-[#FCEFC3] tracking-tight truncate">
-          你的歌來了
+          零秒猜歌
         </h2>
         <p id="completed-card-desc" data-i18n="scorecard_summary" class="text-xs text-slate-400 mt-0.5">全曲庫逐首挑戰戰績看板</p>
       </div>

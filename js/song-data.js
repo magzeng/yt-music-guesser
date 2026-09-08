@@ -1,6 +1,6 @@
 // Song Database and Playlist Helper (Dynamic Fetching Architecture)
 export const DEFAULT_PLAYLIST_ID = 'PLSFoGAp7QeTQ';
-export const DEFAULT_PLAYLIST_TITLE = '你的歌來了';
+export const DEFAULT_PLAYLIST_TITLE = '零秒猜歌';
 
 // Cloudflare Worker Proxy for YouTube Music Traditional Chinese (zh-TW) resolving
 export const WORKER_PROXY_URL = 'https://worker-music-guesser.mag5323.workers.dev';
@@ -8,7 +8,7 @@ export const WORKER_PROXY_URL = 'https://worker-music-guesser.mag5323.workers.de
 export const SONG_CATEGORIES = {
   default: {
     id: 'default',
-    name: '🔥 你的歌來了',
+    name: '🔥 零秒猜歌',
     playlistId: DEFAULT_PLAYLIST_ID,
     icon: 'flame',
     description: '熱門華語經典金曲，YouTube Music 官方正版音檔'

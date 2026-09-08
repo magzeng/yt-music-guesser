@@ -1803,8 +1803,8 @@ class GuessGameApp {
     const footerY = height - 20;
     ctx.textAlign = 'center';
     ctx.font = '11px "Noto Sans TC", sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('🎧 你的歌來了 · 零秒猜歌  |  magzeng.github.io/yt-music-guesser', width / 2, footerY);
+    const isEn = i18n.currentLang === 'en';
+    ctx.fillText(isEn ? '🎧 SongGuesser · Sub-second Music Trivia  |  magzeng.github.io/yt-music-guesser' : '🎧 零秒猜歌 · 極速音樂挑戰  |  magzeng.github.io/yt-music-guesser', width / 2, footerY);
 
     // Export to Blob
     canvas.toBlob(async (blob) => {
